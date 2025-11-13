@@ -40,65 +40,54 @@ Name: {student_data['applicant_name']}
 Program Interest: {student_data['program_interest']}
 Education Level: {student_data['education_level']}
 Ministerial Experience: {student_data['ministerial_experience']}
-Pastoral Recommendation: {student_data['pastoral_recommendation']}
 Background: {student_data['background']}
-Notes: {student_data['additional_notes']}
 
-CRITICAL: Return ONLY valid JSON. Use double quotes for strings. Do not include markdown code blocks. Do not use single quotes inside strings.
-
+Return ONLY valid JSON without any markdown formatting:
 {{
-  "recommended_level": "Certificación Básica",
-  "recommended_programs": ["Program 1", "Program 2"],
-  "justification": "Brief explanation without quotes or special characters",
-  "admissions_notes": "Any concerns without quotes or special characters",
-  "confidence_score": 10
+  "recommended_level": "level here",
+  "recommended_programs": ["program 1", "program 2"],
+  "justification": "explanation here",
+  "admissions_notes": "notes here",
+  "confidence_score": 8
 }}"""
 
     try:
         model = genai.GenerativeModel('gemini-2.5-flash')
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                'temperature': 0.3,
-                'top_p': 0.95,
-                'top_k': 40,
-                'max_output_tokens': 1024,
-            }
-        )
+        response = model.generate_content(prompt)
         
-        # Access response parts directly
-        response_text = response.candidates[0].content.parts[0].text.strip()
+        # Get response text safely
+        response_text = ""
+        if hasattr(response, 'candidates') and response.candidates:
+            candidate = response.candidates[0]
+            if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts') and candidate.content.parts:
+                response_text = candidate.content.parts[0].text
         
-        # Clean up any markdown remnants
+        if not response_text:
+            raise ValueError("Empty response from Gemini")
+        
+        response_text = response_text.strip()
+        
+        # Remove markdown formatting
         response_text = response_text.replace('```json', '').replace('```', '').strip()
         
-        # Debug output
-        print(f"[DEBUG] Gemini response length: {len(response_text)}")
-        print(f"[DEBUG] First 500 chars: {response_text[:500]}")
+        print(f"[DEBUG] Response: {response_text[:200]}")
         
+        # Parse JSON
         classification = json.loads(response_text)
         
+        # Validate required fields
         required = ['recommended_level', 'recommended_programs', 'justification', 'admissions_notes']
         if not all(k in classification for k in required):
-            raise ValueError("Missing required fields")
+            raise ValueError(f"Missing fields: {[k for k in required if k not in classification]}")
         
-        print(f"[SUCCESS] Classification: {classification['recommended_level']}")
+        print(f"[SUCCESS] Level: {classification['recommended_level']}")
         return classification
         
-    except json.JSONDecodeError as e:
-        print(f"[ERROR] JSON Parse Error: {e}")
-        print(f"[ERROR] Full response: {response_text if 'response_text' in locals() else 'No response'}")
-        return {
-            "recommended_level": "Certificación Básica",
-            "recommended_programs": ["Certificado en Estudios Bíblicos"],
-            "justification": "Error en procesamiento de respuesta JSON. Requiere revisión manual.",
-            "admissions_notes": "⚠️ ATENCIÓN: Error parseando respuesta de IA. Revisar manualmente.",
-            "confidence_score": 1
-        }
     except Exception as e:
-        print(f"[ERROR] Gemini Error: {e}")
+        print(f"[ERROR] Classification failed: {str(e)}")
         import traceback
-        print(traceback.format_exc())
+        traceback.print_exc()
+        
         return {
             "recommended_level": "Certificación Básica",
             "recommended_programs": ["Certificado en Estudios Bíblicos"],
