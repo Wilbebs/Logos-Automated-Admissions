@@ -68,21 +68,23 @@ Return ONLY valid JSON:
         
         # Handle response properly for Gemini 2.5
         try:
-            # Try to access response parts directly
             response_text = response.candidates[0].content.parts[0].text.strip()
         except (AttributeError, IndexError):
-            # Fallback to text attribute if available
             response_text = response.text.strip()
         
         # Clean up markdown code blocks if present
         if response_text.startswith('```'):
             lines = response_text.split('\n')
-            # Remove first line (```json or ```)
-            lines = lines[1:]
-            # Remove last line (```)
+            lines = lines[1:]  # Remove first line
             if lines and lines[-1].strip() == '```':
-                lines = lines[:-1]
+                lines = lines[:-1]  # Remove last line
             response_text = '\n'.join(lines).strip()
+        
+        # Remove any remaining markdown indicators
+        response_text = response_text.replace('```json', '').replace('```', '').strip()
+        
+        # Debug: print what we're trying to parse
+        print(f"[DEBUG] Attempting to parse JSON: {response_text[:200]}...")
         
         classification = json.loads(response_text)
         
@@ -92,6 +94,16 @@ Return ONLY valid JSON:
         
         return classification
         
+    except json.JSONDecodeError as e:
+        print(f"JSON Parse Error: {e}")
+        print(f"Response text: {response_text}")
+        return {
+            "recommended_level": "Certificación Básica",
+            "recommended_programs": ["Certificado en Estudios Bíblicos"],
+            "justification": "Error en procesamiento de respuesta JSON. Requiere revisión manual.",
+            "admissions_notes": "⚠️ ATENCIÓN: Error parseando respuesta de IA. Revisar manualmente.",
+            "confidence_score": 1
+        }
     except Exception as e:
         print(f"Gemini Error: {e}")
         return {
