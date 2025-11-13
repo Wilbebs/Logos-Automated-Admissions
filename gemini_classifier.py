@@ -66,20 +66,23 @@ Return ONLY valid JSON:
             }
         )
         
-        # Updated response handling for newer Gemini models
-        if hasattr(response, 'text'):
-            response_text = response.text.strip()
-        elif response.candidates:
+        # Handle response properly for Gemini 2.5
+        try:
+            # Try to access response parts directly
             response_text = response.candidates[0].content.parts[0].text.strip()
-        else:
-            raise ValueError("No valid response from Gemini")
+        except (AttributeError, IndexError):
+            # Fallback to text attribute if available
+            response_text = response.text.strip()
         
         # Clean up markdown code blocks if present
         if response_text.startswith('```'):
-            response_text = response_text.split('```')[1]
-            if response_text.startswith('json'):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
+            lines = response_text.split('\n')
+            # Remove first line (```json or ```)
+            lines = lines[1:]
+            # Remove last line (```)
+            if lines and lines[-1].strip() == '```':
+                lines = lines[:-1]
+            response_text = '\n'.join(lines).strip()
         
         classification = json.loads(response_text)
         
