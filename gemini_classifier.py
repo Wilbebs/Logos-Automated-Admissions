@@ -55,7 +55,7 @@ Return ONLY valid JSON:
 }}"""
 
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        model = genai.GenerativeModel('gemini-pro')
         response = model.generate_content(
             prompt,
             generation_config={
