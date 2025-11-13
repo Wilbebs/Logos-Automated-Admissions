@@ -1,3 +1,9 @@
+import google.generativeai as genai
+import os
+import json
+
+genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+
 def classify_student(student_data):
     prompt = f"""You are an academic advisor for Universidad Cristiana de Logos (UCL). Evaluate and recommend the appropriate academic level and program.
 
@@ -59,7 +65,7 @@ Return ONLY valid JSON (no markdown, no explanations):
             }
         )
         
-        # Access response parts directly (no fallback to .text)
+        # Access response parts directly
         response_text = response.candidates[0].content.parts[0].text.strip()
         
         # Clean up markdown code blocks if present
@@ -78,7 +84,7 @@ Return ONLY valid JSON (no markdown, no explanations):
         
     except json.JSONDecodeError as e:
         print(f"JSON Parse Error: {e}")
-        print(f"Full response: {response_text}")
+        print(f"Full response: {response_text if 'response_text' in locals() else 'No response'}")
         return {
             "recommended_level": "Certificación Básica",
             "recommended_programs": ["Certificado en Estudios Bíblicos"],
