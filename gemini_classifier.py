@@ -1,20 +1,13 @@
-import google.generativeai as genai
-import os
-import json
-
-genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-
 def classify_student(student_data):
     prompt = f"""You are an academic advisor for Universidad Cristiana de Logos (UCL). Evaluate and recommend the appropriate academic level and program.
 
 ACADEMIC LEVELS:
-1. Certificación Básica - Minimal formal education or new to theological studies
-2. Pregrado - Bachelor's level (requires secondary education)
-3. Postgrado - Master's level (requires undergraduate degree)
-4. Doctorado - Doctoral programs (requires master's degree)
+- Certificación Básica - Minimal formal education or new to theological studies
+- Pregrado - Bachelor's level (requires secondary education)
+- Postgrado - Master's level (requires undergraduate degree)
+- Doctorado - Doctoral programs (requires master's degree)
 
 AVAILABLE PROGRAMS:
-
 CERTIFICACIÓN BÁSICA:
 - Certificado en Estudios Bíblicos
 - Certificado en Ministerio Cristiano
@@ -45,13 +38,13 @@ Pastoral Recommendation: {student_data['pastoral_recommendation']}
 Background: {student_data['background']}
 Notes: {student_data['additional_notes']}
 
-Return ONLY valid JSON:
+Return ONLY valid JSON (no markdown, no explanations):
 {{
   "recommended_level": "string (exactly: Certificación Básica, Pregrado, Postgrado, or Doctorado)",
   "recommended_programs": ["program 1", "program 2"],
   "justification": "2-3 sentence explanation",
   "admissions_notes": "Any concerns or special considerations",
-  "confidence_score": number 1-10
+  "confidence_score": 10
 }}"""
 
     try:
@@ -66,25 +59,14 @@ Return ONLY valid JSON:
             }
         )
         
-        # Handle response properly for Gemini 2.5
-        try:
-            response_text = response.candidates[0].content.parts[0].text.strip()
-        except (AttributeError, IndexError):
-            response_text = response.text.strip()
+        # Access response parts directly (no fallback to .text)
+        response_text = response.candidates[0].content.parts[0].text.strip()
         
         # Clean up markdown code blocks if present
-        if response_text.startswith('```'):
-            lines = response_text.split('\n')
-            lines = lines[1:]  # Remove first line
-            if lines and lines[-1].strip() == '```':
-                lines = lines[:-1]  # Remove last line
-            response_text = '\n'.join(lines).strip()
-        
-        # Remove any remaining markdown indicators
         response_text = response_text.replace('```json', '').replace('```', '').strip()
         
         # Debug: print what we're trying to parse
-        print(f"[DEBUG] Attempting to parse JSON: {response_text[:200]}...")
+        print(f"[DEBUG] Gemini response: {response_text[:300]}")
         
         classification = json.loads(response_text)
         
@@ -96,7 +78,7 @@ Return ONLY valid JSON:
         
     except json.JSONDecodeError as e:
         print(f"JSON Parse Error: {e}")
-        print(f"Response text: {response_text}")
+        print(f"Full response: {response_text}")
         return {
             "recommended_level": "Certificación Básica",
             "recommended_programs": ["Certificado en Estudios Bíblicos"],
@@ -106,6 +88,8 @@ Return ONLY valid JSON:
         }
     except Exception as e:
         print(f"Gemini Error: {e}")
+        import traceback
+        print(traceback.format_exc())
         return {
             "recommended_level": "Certificación Básica",
             "recommended_programs": ["Certificado en Estudios Bíblicos"],
