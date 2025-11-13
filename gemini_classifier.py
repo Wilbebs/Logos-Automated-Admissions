@@ -1,3 +1,9 @@
+import google.generativeai as genai
+import os
+import json
+
+genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+
 def classify_student(student_data):
     prompt = f"""You are an academic advisor for Universidad Cristiana de Logos (UCL). Evaluate and recommend the appropriate academic level and program.
 
@@ -57,7 +63,7 @@ CRITICAL: Return ONLY valid JSON. Use double quotes for strings. Do not include 
                 'top_p': 0.95,
                 'top_k': 40,
                 'max_output_tokens': 1024,
-                'response_mime_type': 'application/json',  # Force JSON response
+                'response_mime_type': 'application/json',
             }
         )
         
