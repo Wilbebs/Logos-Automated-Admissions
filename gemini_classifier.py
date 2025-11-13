@@ -63,7 +63,6 @@ CRITICAL: Return ONLY valid JSON. Use double quotes for strings. Do not include 
                 'top_p': 0.95,
                 'top_k': 40,
                 'max_output_tokens': 1024,
-                'response_mime_type': 'application/json',
             }
         )
         
