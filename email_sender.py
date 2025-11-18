@@ -3,13 +3,15 @@ import os
 
 def send_email_with_attachment(recipient, student_data, classification, docx_path):
     api_key = os.getenv('RESEND_API_KEY')
-    sender_email = os.getenv('GMAIL_USER', 'admissions@yourdomain.com')
     
     if not api_key:
         print("[EMAIL] Missing Resend API key - skipping email")
         return False
     
     resend.api_key = api_key
+    
+    # Use your verified domain email
+    sender_email = "web@logos.edu"
     
     html_body = f"""
     <html>
@@ -42,7 +44,8 @@ def send_email_with_attachment(recipient, student_data, classification, docx_pat
         with open(docx_path, 'rb') as f:
             file_content = f.read()
         
-        print("[EMAIL] Sending via Resend...")
+        print(f"[EMAIL] Sending via Resend to {recipient}...")
+        
         params = {
             "from": f"UCL Admissions <{sender_email}>",
             "to": [recipient],
@@ -56,10 +59,12 @@ def send_email_with_attachment(recipient, student_data, classification, docx_pat
             ],
         }
         
-        email = resend.Emails.send(params)
-        print(f"[EMAIL] Successfully sent to {recipient} (ID: {email['id']})")
+        response = resend.Emails.send(params)
+        print(f"[EMAIL] Successfully sent! ID: {response['id']}")
         return True
         
     except Exception as e:
-        print(f"[EMAIL] Error sending via Resend: {e}")
+        print(f"[EMAIL] Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return False
