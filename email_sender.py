@@ -2,17 +2,25 @@ import resend
 import os
 
 def send_email_with_attachment(recipient, student_data, classification, docx_path):
+    # Debug: print all environment variables that start with RESEND or GEMINI
+    print("[DEBUG] Environment variables:")
+    for key in os.environ:
+        if 'RESEND' in key or 'GEMINI' in key or 'GMAIL' in key or 'RECIPIENT' in key:
+            value = os.environ[key]
+            print(f"  {key} = {value[:15]}..." if len(value) > 15 else f"  {key} = {value}")
+    
     api_key = os.getenv('RESEND_API_KEY')
     
     if not api_key:
         print("[EMAIL] Missing Resend API key - skipping email")
+        print(f"[EMAIL] Checked for: RESEND_API_KEY")
         return False
     
-    print(f"[EMAIL] API key found: {api_key[:10]}...")  # Debug line
+    print(f"[EMAIL] API key found: {api_key[:10]}...")
     
     resend.api_key = api_key
     
-    # Use Resend's test domain - works immediately
+    # Use Resend's test domain
     sender_email = "onboarding@resend.dev"
     
     html_body = f"""
@@ -47,8 +55,6 @@ def send_email_with_attachment(recipient, student_data, classification, docx_pat
             file_content = f.read()
         
         print(f"[EMAIL] Sending via Resend to {recipient}...")
-        print(f"[EMAIL] From: {sender_email}")
-        print(f"[EMAIL] Attachment size: {len(file_content)} bytes")
         
         params = {
             "from": f"UCL Admissions <{sender_email}>",
