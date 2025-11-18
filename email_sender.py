@@ -8,9 +8,11 @@ def send_email_with_attachment(recipient, student_data, classification, docx_pat
         print("[EMAIL] Missing Resend API key - skipping email")
         return False
     
+    print(f"[EMAIL] API key found: {api_key[:10]}...")  # Debug line
+    
     resend.api_key = api_key
     
-    # For now, use Resend's test domain until logos.edu is verified
+    # Use Resend's test domain - works immediately
     sender_email = "onboarding@resend.dev"
     
     html_body = f"""
@@ -45,6 +47,8 @@ def send_email_with_attachment(recipient, student_data, classification, docx_pat
             file_content = f.read()
         
         print(f"[EMAIL] Sending via Resend to {recipient}...")
+        print(f"[EMAIL] From: {sender_email}")
+        print(f"[EMAIL] Attachment size: {len(file_content)} bytes")
         
         params = {
             "from": f"UCL Admissions <{sender_email}>",
@@ -60,11 +64,11 @@ def send_email_with_attachment(recipient, student_data, classification, docx_pat
         }
         
         response = resend.Emails.send(params)
-        print(f"[EMAIL] Successfully sent! ID: {response['id']}")
+        print(f"[EMAIL] ✓ Successfully sent! ID: {response['id']}")
         return True
         
     except Exception as e:
-        print(f"[EMAIL] Error: {str(e)}")
+        print(f"[EMAIL] ✗ Error: {str(e)}")
         import traceback
         traceback.print_exc()
         return False
