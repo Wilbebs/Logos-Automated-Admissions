@@ -10,8 +10,8 @@ def send_email_with_attachment(recipient, student_data, classification, docx_pat
     
     resend.api_key = api_key
     
-    # Use your verified domain email
-    sender_email = "web@logos.edu"
+    # For now, use Resend's test domain until logos.edu is verified
+    sender_email = "onboarding@resend.dev"
     
     html_body = f"""
     <html>
