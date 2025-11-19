@@ -19,11 +19,11 @@ def get_report_structure(student_data, classification):
                 "title": "INFORMACIÓN DEL SOLICITANTE",
                 "type": "key_value_pairs",
                 "content": [
-                    {"label": "Nombre Completo", "value": student_data['applicant_name']},
-                    {"label": "Correo Electrónico", "value": student_data['email']},
+                    {"label": "Nombre Completo", "value": student_data.get('applicant_name', 'No proporcionado')},
+                    {"label": "Correo Electrónico", "value": student_data.get('email', 'No proporcionado')},
                     {"label": "Teléfono", "value": student_data.get('phone', 'No proporcionado')},
-                    {"label": "Programa de Interés", "value": student_data['program_interest']},
-                    {"label": "Nivel Educativo Actual", "value": student_data['education_level']},
+                    {"label": "Programa de Interés", "value": student_data.get('program_interest', 'No proporcionado')},
+                    {"label": "Nivel Educativo Actual", "value": student_data.get('education_level', 'No proporcionado')},
                 ]
             },
             
