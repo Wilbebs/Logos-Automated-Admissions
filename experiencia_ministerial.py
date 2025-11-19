@@ -3,14 +3,14 @@
 FORM_CONFIG = {
     "form_id": "experiencia_ministerial",
     "form_name": "Formulario de Experiencia Ministerial",
-    "detection_fields": ["element_17", "element_26", "element_33"],
+    "detection_fields": ["element_26", "element_33"],  # ← UNIQUE: years_attending + ministry role
     "field_mappings": {
         "element_1": "applicant_first_name",
         "element_2": "applicant_last_name",
         "element_9": "email",
         "element_17": "church_name",
         "element_26": "years_attending_church",
-        # Add more as you test
+        "element_33": "ministry_position",
     },
     "required_fields": ["applicant_first_name", "applicant_last_name", "email"]
 }
@@ -22,9 +22,8 @@ def extract_student_data(raw_data: dict) -> dict:
         if element_id in raw_data:
             student_data[field_name] = raw_data[element_id]
     
-    # CRITICAL: Always ensure these required fields exist
     student_data["applicant_name"] = f"{student_data.get('applicant_first_name', '')} {student_data.get('applicant_last_name', '')}".strip()
-    student_data["email"] = student_data.get("email", "No email")  # ← FIX: Provide default
+    student_data["email"] = student_data.get("email", "No email")
     student_data["education_level"] = "No especificado"
     student_data["ministerial_experience"] = f"Iglesia: {student_data.get('church_name', 'N/A')}"
     student_data["background"] = "Experiencia Ministerial"
