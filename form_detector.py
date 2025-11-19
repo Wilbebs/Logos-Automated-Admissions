@@ -9,12 +9,13 @@ import latinoamerica
 import experiencia_ministerial
 import recomendacion_pastoral
 
-# Registry of all forms
+# Registry of all forms - ORDER MATTERS!
+# Put most specific forms first
 ALL_FORMS = [
-    estados_unidos,
-    latinoamerica,
-    experiencia_ministerial,
-    recomendacion_pastoral
+    experiencia_ministerial,      # ← CHECK THIS FIRST (most specific)
+    recomendacion_pastoral,       # ← CHECK THIS SECOND (specific)
+    estados_unidos,               # ← CHECK THIS THIRD (has element_1_1, element_1_2)
+    latinoamerica,                # ← CHECK THIS LAST (most generic)
 ]
 
 
