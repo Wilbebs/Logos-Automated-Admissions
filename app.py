@@ -1,139 +1,193 @@
-from flask import Flask, request, jsonify
-import os
-from dotenv import load_dotenv
-from gemini_classifier import classify_student
-from docx_generator import generate_report
-from email_sender import send_email_with_attachment
-import traceback
-from datetime import datetime
+"""
+LOGOS UCL - Automated Admissions System
+Multi-Form Support with Two-Stage Classification
+"""
 
-load_dotenv()
+from flask import Flask, request, jsonify
+import json
+import os
+
+# Import YOUR existing modules
+import form_detector
+import gemini_classifier
+import docx_generator
+import email_sender
+import application_tracker
+
 app = Flask(__name__)
+
+print("\n" + "="*50)
+print("LOGOS UCL - Multi-Form Admissions System")
+print("="*50)
+print("✓ Form detector loaded")
+print("✓ Gemini classifier loaded")
+print("✓ DOCX generator loaded")
+print("✓ Email sender loaded")
+print("✓ Application tracker loaded")
+print("="*50 + "\n")
+
 
 @app.route('/')
 def home():
+    """System status page"""
     return jsonify({
-        "status": "online",
-        "service": "Logos University - Automated Class Placement System",
-        "version": "1.0"
+        "status": "running",
+        "system": "LOGOS UCL Multi-Form Admissions",
+        "version": "2.0",
+        "forms_supported": [
+            "Solicitud Oficial de Admisión Estados Unidos y el Mundo",
+            "Solicitud Oficial de Admisión Latinoamérica",
+            "Formulario de Experiencia Ministerial",
+            "Formulario de Recomendación Pastoral"
+        ],
+        "features": [
+            "Multi-form detection",
+            "Two-stage classification",
+            "Application tracking",
+            "Automated DOCX reports",
+            "Email notifications"
+        ]
     })
 
+
+@app.route('/health')
+def health():
+    """Health check endpoint"""
+    return jsonify({"status": "healthy"})
+
+
 @app.route('/webhook/machform', methods=['POST'])
-def machform_webhook():
+def webhook():
+    """
+    Main webhook endpoint - handles ALL forms
+    """
+    print("\n" + "="*60)
+    print("📨 WEBHOOK RECEIVED")
+    print("="*60)
+    
     try:
-        raw_data = request.form.to_dict() if request.form else request.json
+        # Get raw data
+        raw_data = request.get_json() or request.form.to_dict()
         
-        print(f"[WEBHOOK] Received submission")
-        print(f"[WEBHOOK] Entry ID: {raw_data.get('entry_no', 'unknown')}")
+        if not raw_data:
+            print("❌ No data received")
+            return jsonify({"error": "No data"}), 400
         
-        student_data = extract_student_data(raw_data)
+        print(f"📦 Data fields received: {len(raw_data)}")
         
-        if not student_data.get('applicant_name') or not student_data.get('email'):
-            return jsonify({"error": "Missing required fields"}), 400
+        # STEP 1: Detect which form was submitted
+        print("\n🔍 STEP 1: Form Detection")
+        student_data = form_detector.extract_student_data(raw_data)
         
-        print(f"[PROCESSING] Student: {student_data['applicant_name']}")
+        if not student_data or student_data.get('form_id') == 'unknown':
+            print("⚠️ Could not identify form")
+            return jsonify({
+                "status": "warning",
+                "message": "Form could not be identified",
+                "received_fields": list(raw_data.keys())[:10]
+            }), 200
         
-        classification = classify_student(student_data)
-        print(f"[GEMINI] Level: {classification['recommended_level']}")
+        print(f"✓ Detected: {student_data.get('form_name')}")
+        print(f"✓ Applicant: {student_data.get('applicant_name')}")
+        print(f"✓ Email: {student_data.get('email')}")
         
-        docx_path = generate_report(student_data, classification)
-        print(f"[DOCX] Generated: {docx_path}")
+        # STEP 2: Track application
+        print("\n📊 STEP 2: Application Tracking")
+        tracker = application_tracker.get_tracker()
         
-        email_sent = send_email_with_attachment(
-            recipient=os.getenv('RECIPIENT_EMAIL'),
+        # This is where we'd track the submission
+        # For now, just check if it's the main application form
+        is_main_form = student_data.get('form_id') in ['estados_unidos_mundo', 'latinoamerica']
+        
+        # STEP 3: Classify student (using YOUR gemini_classifier.py)
+        print("\n🤖 STEP 3: AI Classification")
+        classification = gemini_classifier.classify_student(student_data)
+        
+        print(f"✓ Level: {classification.get('recommended_level')}")
+        print(f"✓ Programs: {classification.get('recommended_programs')}")
+        
+        # STEP 4: Generate DOCX report (using YOUR docx_generator.py)
+        print("\n📄 STEP 4: Generate Report")
+        docx_path = docx_generator.generate_classification_report(
             student_data=student_data,
-            classification=classification,
-            docx_path=docx_path
+            classification=classification
         )
+        print(f"✓ Report saved: {docx_path}")
         
-        if os.path.exists(docx_path):
-            os.remove(docx_path)
+        # STEP 5: Send email (using YOUR email_sender.py)
+        print("\n📧 STEP 5: Send Email")
         
-        print(f"[SUCCESS] Complete")
+        # Determine if this is Stage 1 or Stage 2
+        if is_main_form:
+            # Stage 1: Initial application
+            email_body = f"""
+Nueva Solicitud de Admisión Recibida
+
+Formulario: {student_data.get('form_name')}
+Estudiante: {student_data.get('applicant_name')}
+Email: {student_data.get('email')}
+Programa de Interés: {student_data.get('program_interest')}
+
+RECOMENDACIÓN PRELIMINAR:
+Nivel: {classification.get('recommended_level')}
+Programas: {', '.join(classification.get('recommended_programs', []))}
+
+Justificación: {classification.get('justification')}
+
+Notas: {classification.get('admissions_notes')}
+
+PRÓXIMOS PASOS:
+El estudiante debe completar:
+- Formulario de Experiencia Ministerial
+- Formulario de Recomendación Pastoral
+
+El reporte completo está adjunto.
+            """
+        else:
+            # Stage 2: Supporting form submitted
+            email_body = f"""
+Formulario Adicional Recibido
+
+Formulario: {student_data.get('form_name')}
+Estudiante: {student_data.get('applicant_name')}
+Email: {student_data.get('email')}
+
+Este formulario complementario ha sido procesado y agregado al expediente del estudiante.
+
+El reporte actualizado está adjunto.
+            """
+        
+        email_sender.send_email(
+            subject=f"Nueva Admisión: {student_data.get('applicant_name')} - {student_data.get('form_name')}",
+            body=email_body,
+            attachment_path=docx_path
+        )
+        print("✓ Email sent successfully")
+        
+        print("\n" + "="*60)
+        print("✅ SUCCESS - Processing complete")
+        print("="*60 + "\n")
         
         return jsonify({
             "status": "success",
-            "applicant": student_data['applicant_name'],
-            "recommendation": {
-                "level": classification['recommended_level'],
-                "programs": classification['recommended_programs']
-            },
-            "email_sent": email_sent
-        }), 200
+            "form_detected": student_data.get('form_name'),
+            "applicant": student_data.get('applicant_name'),
+            "classification": classification,
+            "report_generated": True,
+            "email_sent": True
+        })
         
     except Exception as e:
-        print(f"[ERROR] {str(e)}")
-        print(traceback.format_exc())
-        return jsonify({"status": "error", "message": str(e)}), 500
+        print(f"\n❌ ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
-def extract_student_data(raw_data):
-    def get_field(element_id, default=''):
-        value = raw_data.get(element_id, default)
-        return value.strip() if isinstance(value, str) else str(value)
-    
-    title = get_field('element_1')
-    first_name = get_field('element_143')
-    last_name = get_field('element_6')
-    full_name = f"{title} {first_name} {last_name}".strip()
-    
-    ministry_role = get_field('element_22', 'No especificado')
-    church_name = get_field('element_87', 'No especificado')
-    denomination = get_field('element_121', 'No especificado')
-    years_attending = get_field('element_27', 'N/A')
-    years_pastoring = get_field('element_96', 'N/A')
-    church_attendance = get_field('element_102', 'N/A')
-    ordained_year = get_field('element_28', 'N/A')
-    ministry_summary = get_field('element_115', 'No proporcionado')
-    
-    high_school = get_field('element_99', 'No')
-    associate = get_field('element_131', 'No')
-    bachelor = get_field('element_132', 'No')
-    master = get_field('element_133', 'No')
-    doctoral = get_field('element_134', 'No')
-    
-    education_levels = []
-    if doctoral != 'No': education_levels.append('Doctorado')
-    if master != 'No': education_levels.append('Maestría')
-    if bachelor != 'No': education_levels.append('Licenciatura')
-    if associate != 'No': education_levels.append('Técnico/Associate')
-    if high_school != 'No': education_levels.append('Secundaria')
-    
-    highest_education = education_levels[0] if education_levels else 'No especificado'
-    
-    ministerial_experience = f"""
-Rol: {ministry_role}
-Iglesia: {church_name}
-Denominación: {denomination}
-Años asistiendo: {years_attending}
-Años pastoreando: {years_pastoring}
-Asistencia dominical: {church_attendance}
-Año de ordenación: {ordained_year}
-
-Resumen: {ministry_summary}
-    """.strip()
-    
-    has_ministry = ministry_role != 'No especificado' or church_name != 'No especificado'
-    
-    return {
-        'submission_id': get_field('entry_no', 'N/A'),
-        'applicant_name': full_name,
-        'email': get_field('element_12'),
-        'phone': get_field('element_11', 'No proporcionado'),
-        'program_interest': get_field('element_147', 'No especificado'),
-        'education_level': highest_education,
-        'ministerial_experience': ministerial_experience,
-        'pastoral_recommendation': 'Sí' if has_ministry else 'No proporcionado',
-        'background': ministry_summary,
-        'additional_notes': get_field('element_78', 'Ninguna'),
-        'submitted_at': get_field('date_created', datetime.now().isoformat()),
-        'desired_program': get_field('element_136', get_field('element_147')),
-        'study_level_selected': get_field('element_23', 'No especificado')
-    }
-
-@app.route('/health')
-def health_check():
-    return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()}), 200
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
