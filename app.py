@@ -106,61 +106,24 @@ def webhook():
         print(f"✓ Level: {classification.get('recommended_level')}")
         print(f"✓ Programs: {classification.get('recommended_programs')}")
         
-        # STEP 4: Generate DOCX report (using YOUR docx_generator.py)
+        # STEP 4: Generate DOCX report (FIXED FUNCTION NAME)
         print("\n📄 STEP 4: Generate Report")
-        docx_path = docx_generator.generate_classification_report(
+        docx_path = docx_generator.generate_report(
             student_data=student_data,
             classification=classification
         )
         print(f"✓ Report saved: {docx_path}")
         
-        # STEP 5: Send email (using YOUR email_sender.py)
+        # STEP 5: Send email (FIXED FUNCTION NAME)
         print("\n📧 STEP 5: Send Email")
         
-        # Determine if this is Stage 1 or Stage 2
-        if is_main_form:
-            # Stage 1: Initial application
-            email_body = f"""
-Nueva Solicitud de Admisión Recibida
-
-Formulario: {student_data.get('form_name')}
-Estudiante: {student_data.get('applicant_name')}
-Email: {student_data.get('email')}
-Programa de Interés: {student_data.get('program_interest')}
-
-RECOMENDACIÓN PRELIMINAR:
-Nivel: {classification.get('recommended_level')}
-Programas: {', '.join(classification.get('recommended_programs', []))}
-
-Justificación: {classification.get('justification')}
-
-Notas: {classification.get('admissions_notes')}
-
-PRÓXIMOS PASOS:
-El estudiante debe completar:
-- Formulario de Experiencia Ministerial
-- Formulario de Recomendación Pastoral
-
-El reporte completo está adjunto.
-            """
-        else:
-            # Stage 2: Supporting form submitted
-            email_body = f"""
-Formulario Adicional Recibido
-
-Formulario: {student_data.get('form_name')}
-Estudiante: {student_data.get('applicant_name')}
-Email: {student_data.get('email')}
-
-Este formulario complementario ha sido procesado y agregado al expediente del estudiante.
-
-El reporte actualizado está adjunto.
-            """
+        recipient = os.getenv('RECIPIENT_EMAIL', 'web@logos.edu')
         
-        email_sender.send_email(
-            subject=f"Nueva Admisión: {student_data.get('applicant_name')} - {student_data.get('form_name')}",
-            body=email_body,
-            attachment_path=docx_path
+        email_sender.send_email_with_attachment(
+            recipient=recipient,
+            student_data=student_data,
+            classification=classification,
+            docx_path=docx_path
         )
         print("✓ Email sent successfully")
         
