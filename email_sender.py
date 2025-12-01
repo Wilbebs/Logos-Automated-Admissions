@@ -29,7 +29,7 @@ def send_email_with_attachment(recipient, student_data, classification, docx_pat
         <h2 style="color: #0066cc;">Nueva Solicitud Clasificada</h2>
         
         <p><strong>Solicitante:</strong> {student_data['applicant_name']}</p>
-        <p><strong>Correo:</strong> {student_data['email']}</p>
+        <p><strong>Correo:</strong> {student_data.get('email', 'No proporcionado')}</p>
         
         <h3 style="color: #0066cc;">Recomendación:</h3>
         <p><strong>Nivel:</strong> <span style="color: #0066cc; font-size: 16px;">{classification['recommended_level']}</span></p>
