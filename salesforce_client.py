@@ -20,6 +20,10 @@ class SalesforceClient:
     def _connect(self):
         """Establish connection to Salesforce"""
         try:
+            print(f"[SALESFORCE DEBUG] Username: {self.username}")
+            print(f"[SALESFORCE DEBUG] Password length: {len(self.password) if self.password else 0}")
+            print(f"[SALESFORCE DEBUG] Consumer Key: {self.consumer_key[:10]}...")
+            
             self.sf = Salesforce(
                 username=self.username,
                 password=self.password,
