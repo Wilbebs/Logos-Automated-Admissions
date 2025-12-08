@@ -5,7 +5,6 @@ import os
 from simple_salesforce import Salesforce
 from datetime import datetime
 
-class SalesforceClient:
     def __init__(self):
         """Initialize Salesforce connection"""
         self.instance_url = os.getenv('SALESFORCE_INSTANCE_URL')
@@ -13,6 +12,7 @@ class SalesforceClient:
         self.consumer_secret = os.getenv('SALESFORCE_CONSUMER_SECRET')
         self.username = os.getenv('SALESFORCE_USERNAME')
         self.password = os.getenv('SALESFORCE_PASSWORD')
+        self.security_token = os.getenv('SALESFORCE_SECURITY_TOKEN')
         
         self.sf = None
         self._connect()
@@ -22,14 +22,16 @@ class SalesforceClient:
         try:
             print(f"[SALESFORCE DEBUG] Username: {self.username}")
             print(f"[SALESFORCE DEBUG] Password length: {len(self.password) if self.password else 0}")
-            print(f"[SALESFORCE DEBUG] Consumer Key: {self.consumer_key[:10]}...")
+            print(f"[SALESFORCE DEBUG] Security Token: {'Yes' if self.security_token else 'No (External)'}")
             
+            # Use explicit token parameter if available (FIX for invalid_grant)
             self.sf = Salesforce(
                 username=self.username,
                 password=self.password,
+                security_token=self.security_token,
                 consumer_key=self.consumer_key,
                 consumer_secret=self.consumer_secret,
-                domain='login'
+                domain='login' 
             )
             print("[SALESFORCE] ✓ Connected successfully")
         except Exception as e:
