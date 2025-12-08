@@ -5,6 +5,7 @@ import os
 from simple_salesforce import Salesforce
 from datetime import datetime
 
+class SalesforceClient:
     def __init__(self):
         """Initialize Salesforce connection"""
         self.instance_url = os.getenv('SALESFORCE_INSTANCE_URL')
