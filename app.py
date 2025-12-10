@@ -106,9 +106,12 @@ def webhook():
         print(f"✓ Email: {student_data.get('email')}")
         
         # STEP 2: Store in Salesforce
+        # STEP 2: Store in Salesforce
         print("\n💾 STEP 2: Salesforce Integration")
         lead_id = None
         all_forms_complete = False
+        previous_form_count = 0
+        new_form_count = 0
         
         if sf_client:
             try:
@@ -120,14 +123,34 @@ def webhook():
                 lead_id = sf_client.find_or_create_lead(email, first_name, last_name)
                 
                 if lead_id:
-                    # Create Form Submission record
+                    # CHECK FOR DUPLICATES
                     form_type = student_data.get('form_name', 'Unknown')
+                    is_duplicate = sf_client.check_duplicate_form_type(lead_id, form_type)
+                    
+                    if is_duplicate:
+                        print(f"⚠️ DUPLICATE SUBMISSION: {form_type} already exists for this Lead")
+                        return jsonify({
+                            "status": "warning",
+                            "message": "Duplicate form submission detected - ignoring",
+                            "form_detected": form_type
+                        }), 200
+
+                    # Create Form Submission record
                     sf_client.create_form_submission(lead_id, form_type, json.dumps(raw_data, ensure_ascii=False))
                     
-                    # Update Lead form count and check completion
+                    # Track counts BEFORE and AFTER update
+                    # We need to query current count first? update_lead_form_count updates it...
+                    # Let's trust update_lead_form_count logic, but we need the actual count
+                    # To do this reliably, we can get count from submitted types
+                    submitted_types = sf_client.get_submitted_form_types(lead_id)
+                    new_form_count = len(submitted_types)
+                    previous_form_count = new_form_count - 1 # Since we just added one
+                    
+                    # Update Lead form count
                     all_forms_complete = sf_client.update_lead_form_count(lead_id)
                     
                     print(f"✓ Salesforce records created/updated")
+                    print(f"✓ Form Count: {previous_form_count} -> {new_form_count}")
                     print(f"✓ All forms complete: {all_forms_complete}")
                 else:
                     print("⚠️ Could not create/find Lead in Salesforce")
@@ -140,8 +163,60 @@ def webhook():
         print("\n📊 STEP 3: Application Tracking")
         tracker = application_tracker.get_tracker()
         
+        # LOGIC GATES FOR CLASSIFICATION
+        if new_form_count < 3 and sf_client:
+            # Case 1: Incomplete Application (Forms 1 or 2)
+            print(f"\n📧 Sending ACKNOWLEDGMENT email ({new_form_count}/3 forms)")
+            
+            # Determine missing forms
+            submitted_types = sf_client.get_submitted_form_types(lead_id)
+            required_forms = [
+                "Solicitud Oficial de Admisión Estados Unidos y el Mundo", # Or Latinoamerica
+                "Formulario de Experiencia Ministerial",
+                "Formulario de Recomendación Pastoral"
+            ]
+            # Simplistic matching for display
+            missing_forms = []
+            if not any("Solicitud" in t for t in submitted_types):
+                missing_forms.append("Solicitud Oficial de Admisión")
+            if not any("Experiencia" in t for t in submitted_types):
+                missing_forms.append("Experiencia Ministerial")
+            if not any("Recomendación" in t for t in submitted_types):
+                missing_forms.append("Recomendación Pastoral")
+
+            email_sender.send_email_with_attachment(
+                recipient=student_data.get('email'),
+                student_data=student_data,
+                email_type="acknowledgment",
+                missing_forms=missing_forms,
+                form_count=new_form_count
+            )
+            
+            print("✅ SUCCESS - Acknowledgment sent (skipping classification)")
+            return jsonify({
+                "status": "success",
+                "message": "Form received, acknowledgment sent",
+                "progress": f"{new_form_count}/3"
+            })
+
+        elif previous_form_count < 3 and new_form_count == 3:
+            # Case 2: Just Completed (Transition 2 -> 3)
+            print("\n🤖 STEP 4: AI Classification (Stage 2 Triggered)")
+            
+            # Continue to existing classification logic...
+            pass # Fall through to below code
+            
+        else:
+            # Case 3: Already complete (Re-trigger? Or >3 forms?)
+            # Or if Salesforce usage skipped
+            if sf_client and new_form_count > 3:
+                 print(f"⚠️ Extra form submitted ({new_form_count}/3). Skipping re-classification.")
+                 return jsonify({"status": "success", "message": "Extra form received"}), 200
+            
+            # Fallback for local testing/no-salesforce
+            print("\n🤖 STEP 4: AI Classification (Fallback/Local flow)")
+
         # STEP 4: Classify student
-        print("\n🤖 STEP 4: AI Classification")
         
         # Determine classification stage
         classification_status = 'Final' if all_forms_complete else 'Preliminary'
@@ -184,17 +259,14 @@ def webhook():
         
         recipient = os.getenv('RECIPIENT_EMAIL', 'web@logos.edu')
         
-        # Determine email type based on completion status
-        if all_forms_complete:
-            print("[EMAIL] Sending FINAL recommendation email")
-        else:
-            print("[EMAIL] Sending acknowledgment email")
+        print("[EMAIL] Sending FINAL recommendation email")
         
         email_sender.send_email_with_attachment(
             recipient=recipient,
             student_data=student_data,
             classification=classification,
-            docx_path=docx_path
+            docx_path=docx_path,
+            email_type="final"
         )
         print("✓ Email sent successfully")
         

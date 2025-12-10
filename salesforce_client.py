@@ -167,3 +167,29 @@ class SalesforceClient:
         except Exception as e:
             print(f"[SALESFORCE] Error fetching submissions: {e}")
             return []
+
+    def check_duplicate_form_type(self, lead_id, form_type):
+        """Check if this form type has already been submitted by this Lead"""
+        if not self.sf or not lead_id:
+            return False
+            
+        try:
+            query = f"SELECT Id FROM Form_Submission__c WHERE Lead__c = '{lead_id}' AND Form_Type__c = '{form_type}' LIMIT 1"
+            result = self.sf.query(query)
+            return result['totalSize'] > 0
+        except Exception as e:
+            print(f"[SALESFORCE] Error checking for duplicate: {e}")
+            return False
+
+    def get_submitted_form_types(self, lead_id):
+        """Return list of form types already submitted by this Lead"""
+        if not self.sf or not lead_id:
+            return []
+
+        try:
+            query = f"SELECT Form_Type__c FROM Form_Submission__c WHERE Lead__c = '{lead_id}'"
+            results = self.sf.query(query)
+            return [r['Form_Type__c'] for r in results['records']]
+        except Exception as e:
+            print(f"[SALESFORCE] Error fetching submitted form types: {e}")
+            return []
