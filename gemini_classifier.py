@@ -45,21 +45,70 @@ class MultiFormClassifier:
             print(f"[CLASSIFIER] Stage 1 failed: {str(e)}")
             return self._get_fallback_classification()
     
-    def classify_multi_form(self, email: str, student_data: Dict) -> Dict:
+    def classify_multi_form(self, email: str, student_data: Dict, all_submissions: List = None) -> Dict:
         """
         Final classification based on ALL submitted forms.
         This is the STAGE 2 classification - comprehensive assessment.
         
-        Combines:
-        - Solicitud Oficial (demographics, self-reported education)
-        - Experiencia Ministerial (detailed ministry history)
-        - Recomendación Pastoral (pastor verification)
+        Args:
+            email: Applicant email
+            student_data: Basic student data
+            all_submissions: Optional list of Salesforce Form_Submission objects
         """
-        app = self.tracker.get_application(email)
-        
-        if not app or not self.tracker.is_application_complete(email):
-            print("[CLASSIFIER] Cannot do Stage 2 - application incomplete")
-            return self.classify_single_form(student_data)
+        # Option A: Use Salesforce data (Preferred)
+        if all_submissions and len(all_submissions) >= 3:
+            print(f"[CLASSIFIER] Using Stage 2 (comprehensive - {len(all_submissions)} forms from Salesforce)")
+            
+            # Create a temporary app context structure from Salesforce data
+            # This avoids rewriting the prompt builder
+            parsed_submissions = []
+            for sub in all_submissions:
+                try:
+                    # Parse the JSON string back to dict
+                    form_data = json.loads(sub.get('Form_Data_JSON__c', '{}'))
+                    
+                    parsed_submissions.append({
+                        'form_type': sub.get('Form_Type__c'),
+                        'form_name': sub.get('Form_Type__c'),
+                        'submitted_at': sub.get('Submission_Date__c'),
+                        'data_snapshot': {
+                            'program_interest': form_data.get('element_3', 'N/A'), # Example mappings
+                            'education_level': form_data.get('element_4', 'N/A'),
+                            'raw_data': form_data
+                        }
+                    })
+                except Exception as e:
+                    print(f"[CLASSIFIER] Error parsing submission: {e}")
+
+            # Mock an app object structure for the prompt builder
+            class MockApp:
+                def __init__(self):
+                    self.forms_submitted = []
+                    self.created_at = "N/A"
+                    self.updated_at = "N/A"
+                    self.status = "Complete"
+                    self.required_forms = ["Solicitud Oficial", "Experiencia Ministerial", "Recomendación Pastoral"]
+
+            app = MockApp()
+            # Add simple objects that behave like FormSubmission
+            for ps in parsed_submissions:
+                class MockSubmission:
+                    def __init__(self, data):
+                        self.form_type = data['form_type']
+                        self.form_name = data['form_name']
+                        self.submitted_at = data['submitted_at']
+                        self.data_snapshot = data['data_snapshot']['raw_data'] # Use full data
+                
+                app.forms_submitted.append(MockSubmission(ps))
+                
+        # Option B: Fallback to local tracker
+        else:
+            print("[CLASSIFIER] Salesforce data missing/incomplete - falling back to local tracker")
+            app = self.tracker.get_application(email)
+            
+            if not app or not self.tracker.is_application_complete(email):
+                print("[CLASSIFIER] Cannot do Stage 2 - application incomplete")
+                return self.classify_single_form(student_data)
         
         # Build enriched prompt with ALL form data
         prompt = self._build_multi_form_prompt(app, student_data)
@@ -183,12 +232,12 @@ DOCTORADO:
 COMPREHENSIVE STUDENT DATA (from ALL forms):
 
 FROM SOLICITUD OFICIAL:
-Name: {student_data['applicant_name']}
-Email: {student_data['email']}
-Program Interest: {student_data['program_interest']}
-Self-Reported Education: {student_data['education_level']}
+Name: {student_data.get('applicant_name', 'Unknown')}
+Email: {student_data.get('email', 'Unknown')}
+Program Interest: {student_data.get('program_interest', 'N/A')}
+Self-Reported Education: {student_data.get('education_level', 'N/A')}
 Study Level Selected: {student_data.get('study_level_selected', 'N/A')}
-Basic Ministry Info: {student_data['ministerial_experience']}
+Basic Ministry Info: {student_data.get('ministerial_experience', 'N/A')}
 
 FORMS SUBMITTED:
 {json.dumps(forms_data, indent=2, ensure_ascii=False)}
@@ -250,13 +299,18 @@ def classify_student(student_data: Dict) -> Dict:
     classifier = MultiFormClassifier()
     email = student_data.get('email')
     
-    # Check if this is a complete application
+    # Priority 1: Use direct Salesforce data if available
+    if 'all_submissions' in student_data:
+         # all_submissions field is injected by app.py when it detects completion
+         return classifier.classify_multi_form(email, student_data, student_data['all_submissions'])
+    
+    # Priority 2: Check local tracker
     if email:
         tracker = get_tracker()
         if tracker.is_application_complete(email):
-            print("[CLASSIFIER] Application complete - using Stage 2 (multi-form)")
+            print("[CLASSIFIER] Application complete (local) - using Stage 2")
             return classifier.classify_multi_form(email, student_data)
     
-    # Default to Stage 1 (single form)
+    # Default: Stage 1 (single form)
     print("[CLASSIFIER] Using Stage 1 (single-form) classification")
     return classifier.classify_single_form(student_data)
