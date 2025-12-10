@@ -150,14 +150,20 @@ def webhook():
                     sf_client.create_form_submission(lead_id, form_type, json.dumps(raw_data, ensure_ascii=False))
                     
                     # Track counts BEFORE and AFTER update
-                    # We need to query current count first? update_lead_form_count updates it...
-                    # Let's trust update_lead_form_count logic, but we need the actual count
-                    # To do this reliably, we can get count from submitted types
-                    submitted_types = sf_client.get_submitted_form_types(lead_id)
-                    new_form_count = len(submitted_types)
-                    previous_form_count = new_form_count - 1 # Since we just added one
+                    # Handle Salesforce eventual consistency: Query might not show the new record immediately
+                    submitted_types_list = sf_client.get_submitted_form_types(lead_id)
                     
-                    # Update Lead form count
+                    # Ensure current form is counted even if query lags
+                    if form_type not in submitted_types_list:
+                         submitted_types_list.append(form_type)
+                    
+                    # Deduplicate just in case
+                    submitted_types_set = set(submitted_types_list)
+                    
+                    new_form_count = len(submitted_types_set)
+                    previous_form_count = new_form_count - 1 
+                    
+                    # Update Lead form count (this puts the count in the Lead record, mostly for reference/CRM view)
                     all_forms_complete = sf_client.update_lead_form_count(lead_id)
                     
                     print(f"✓ Salesforce records created/updated")
@@ -180,19 +186,21 @@ def webhook():
             print(f"\n📧 Sending ACKNOWLEDGMENT email ({new_form_count}/3 forms)")
             
             # Determine missing forms
-            submitted_types = sf_client.get_submitted_form_types(lead_id)
+            # Use the set we already calculated to avoid another query
+            submitted_types_now = submitted_types_set if 'submitted_types_set' in locals() else set()
+            
             required_forms = [
-                "Solicitud Oficial de Admisión Estados Unidos y el Mundo", # Or Latinoamerica
+                "Solicitud Oficial de Admisión Estados Unidos y el Mundo", 
                 "Formulario de Experiencia Ministerial",
                 "Formulario de Recomendación Pastoral"
             ]
-            # Simplistic matching for display
+            
             missing_forms = []
-            if not any("Solicitud" in t for t in submitted_types):
+            if not any("Solicitud" in t for t in submitted_types_now):
                 missing_forms.append("Solicitud Oficial de Admisión")
-            if not any("Experiencia" in t for t in submitted_types):
+            if not any("Experiencia" in t for t in submitted_types_now):
                 missing_forms.append("Experiencia Ministerial")
-            if not any("Recomendación" in t for t in submitted_types):
+            if not any("Recomendación" in t for t in submitted_types_now):
                 missing_forms.append("Recomendación Pastoral")
 
             email_sender.send_email_with_attachment(
