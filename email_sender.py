@@ -153,6 +153,5 @@ def send_email_with_attachment(recipient, student_data, classification=None, doc
         
     except Exception as e:
         print(f"[EMAIL] ✗ Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        # Don't crash for email errors
         return False
