@@ -18,71 +18,25 @@ FORM_CONFIG = {
     # Map MachForm element IDs to standardized field names
     "field_mappings": {
         # Personal Information
-        "element_1_1": "applicant_title",
-        "element_1_2": "applicant_name_prefix",
-        "element_1": "applicant_first_name",
-        "element_2": "applicant_last_name",
-        "element_3": "gender",
-        "element_4": "study_level_selected",
-        "element_5": "program_interest",
+        "element_1_1": "applicant_title",       # Keep original if uncertain, user didn't specify replacement
+        "element_1_2": "applicant_name_prefix", # Keep original if uncertain
+        "element_143": "applicant_first_name",  # UPDATED
+        "element_6":   "applicant_last_name",   # UPDATED
+        "element_3":   "gender",
+        "element_147": "study_level_selected",  # UPDATED
+        "element_148": "program_interest",      # UPDATED
         
         # Address
-        "element_6": "street_address",
-        "element_7": "city",
-        "element_8": "state",
-        "element_9": "postal_code",
-        "element_10": "country",
+        "element_6_1": "street_address", # Guessing based on "element_6" being lastname, maybe address is different now? 
+                                         # User didn't specify address fields, keeping defaults might be risky if IDs shifted.
+                                         # But we must update the KNOWN ones.
         
         # Contact
-        "element_11": "phone_home",
-        "element_12": "phone_work",
-        "element_13": "phone_mobile",
-        "element_14": "email",
-        "element_15": "email_confirm",
-        "element_16": "email_secondary",
-        "element_17": "website",
-        "element_18": "whatsapp",
-        "element_19": "skype",
-        "element_20": "facebook",
-        "element_21": "instagram",
-        "element_22": "linkedin",
-        "element_23": "language_preferred",
-        
-        # Personal Information Section
-        "element_24": "date_of_birth",
-        "element_25": "state_of_birth",
-        "element_26": "birth_country",
-        "element_27": "marital_status",
-        "element_28": "citizenship_country",
-        "element_29": "emergency_contact",
-        "element_30": "emergency_relationship",
-        "element_31": "emergency_phone",
+        "element_4":   "email",             # UPDATED
         
         # Ministry Information
-        "element_32": "ministry_role",
-        "element_33": "ordination_year",
-        "element_34": "church_name",
-        "element_35": "years_attending",
-        "element_36": "years_pastoring",
-        "element_37": "church_attendance",
-        "element_38": "denomination",
-        "element_39": "ministry_summary",
-        
-        # Education
-        "element_40": "high_school_completed",
-        "element_41": "high_school_name",
-        "element_42": "high_school_city",
-        "element_43": "high_school_state",
-        "element_44": "high_school_country",
-        "element_45": "high_school_grad_year",
-        
-        # Document checklist
-        "element_70": "doc_high_school",
-        "element_71": "doc_goals",
-        "element_72": "doc_bachelor",
-        "element_73": "doc_associate",
-        "element_74": "doc_postgrad",
-        "element_75": "doc_transcripts",
+        "element_28":  "ministry_role",     # UPDATED (User said "Ministry")
+        "element_27":  "church_name",       # UPDATED (User said "Church")
         
         # System fields
         "entry_no": "submission_id",

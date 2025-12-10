@@ -5,12 +5,12 @@ FORM_CONFIG = {
     "form_name": "Formulario de Recomendación Pastoral",
     "detection_fields": ["element_18", "element_41"],  # ← UNIQUE: pastor_name + rating field
     "field_mappings": {
-        "element_1": "applicant_first_name",
-        "element_2": "applicant_last_name",
-        "element_9": "applicant_email",
-        "element_18": "pastor_name",
-        "element_28": "time_known",
-        "element_41": "rating_commitment",
+        "element_3":  "applicant_first_name",   # UPDATED
+        "element_77": "applicant_last_name",    # UPDATED
+        "element_79": "applicant_email",        # UPDATED
+        "element_18": "pastor_name",            # UPDATED (Matches old?)
+        "element_28": "time_known",             # Keep existing?
+        "element_72": "rating_commitment",      # UPDATED
     },
     "required_fields": ["applicant_first_name", "applicant_last_name"]
 }

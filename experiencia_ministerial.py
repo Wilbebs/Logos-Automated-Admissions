@@ -5,12 +5,12 @@ FORM_CONFIG = {
     "form_name": "Formulario de Experiencia Ministerial",
     "detection_fields": ["element_26", "element_33"],  # ← UNIQUE: years_attending + ministry role
     "field_mappings": {
-        "element_1": "applicant_first_name",
-        "element_2": "applicant_last_name",
-        "element_9": "email",
-        "element_17": "church_name",
-        "element_26": "years_attending_church",
-        "element_33": "ministry_position",
+        "element_16": "applicant_first_name",   # UPDATED
+        "element_67": "applicant_last_name",    # UPDATED
+        "element_66": "email",                  # UPDATED
+        "element_1":  "church_name",            # UPDATED
+        "element_55": "years_attending_church", # UPDATED
+        "element_64": "ministry_position",      # UPDATED
     },
     "required_fields": ["applicant_first_name", "applicant_last_name", "email"]
 }
