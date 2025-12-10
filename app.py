@@ -129,9 +129,20 @@ def webhook():
                     
                     if is_duplicate:
                         print(f"⚠️ DUPLICATE SUBMISSION: {form_type} already exists for this Lead")
+                        
+                        # Send Warning Email
+                        recipient = student_data.get('email')
+                        if recipient:
+                            print(f"[EMAIL] Sending DUPLICATE WARNING to {recipient}")
+                            email_sender.send_email_with_attachment(
+                                recipient=recipient,
+                                student_data=student_data,
+                                email_type="duplicate_warning"
+                            )
+                        
                         return jsonify({
                             "status": "warning",
-                            "message": "Duplicate form submission detected - ignoring",
+                            "message": "Duplicate form submission detected - warning email sent",
                             "form_detected": form_type
                         }), 200
 

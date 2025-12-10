@@ -61,6 +61,33 @@ def send_email_with_attachment(recipient, student_data, classification=None, doc
         attachments = []
         print(f"[EMAIL] Prepared ACKNOWLEDGMENT email for {recipient}")
         
+    elif email_type == "duplicate_warning":
+        # EMAIL TYPE 3: Duplicate Warning
+        subject = f"Aviso sobre su solicitud: {student_data.get('form_name', 'Formulario')}"
+        
+        html_body = f"""
+        <html>
+          <body style="font-family: Arial, sans-serif;">
+            <h2 style="color: #cc0000;">Formulario Duplicado Detectado</h2>
+            
+            <p>Estimado/a <strong>{student_data['applicant_name']}</strong>,</p>
+            
+            <p>Hemos detectado que ya ha enviado el formulario: <strong>{student_data.get('form_name', 'Formulario')}</strong> anteriormente.</p>
+            
+            <p>Para evitar errores en su proceso de admisión, esta copia duplicada no será procesada.</p>
+            
+            <p>Si cree que esto es un error o necesita actualizar su información, por favor contacte a la oficina de admisiones.</p>
+            
+            <hr>
+            <p style="font-size: 12px; color: #666;">
+              Oficina de Admisiones - Universidad Cristiana de Logos
+            </p>
+          </body>
+        </html>
+        """
+        attachments = []
+        print(f"[EMAIL] Prepared DUPLICATE WARNING email for {recipient}")
+
     else:
         # EMAIL TYPE 2: Final Classification (Form 3)
         subject = f"Clasificación Académica Completa: {student_data['applicant_name']}"
