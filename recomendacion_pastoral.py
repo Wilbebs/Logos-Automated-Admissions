@@ -5,18 +5,27 @@ FORM_CONFIG = {
     "form_name": "Formulario de Recomendación Pastoral",
     "detection_fields": ["element_18", "element_41"],  # ← UNIQUE: pastor_name + rating field
     "field_mappings": {
-        "element_3":  "applicant_first_name",   # UPDATED
-        "element_77": "applicant_last_name",    # UPDATED
-        "element_79": "applicant_email",        # UPDATED
-        "element_18": "pastor_name",            # UPDATED (Matches old?)
-        "element_28": "time_known",             # Keep existing?
-        "element_72": "rating_commitment",      # UPDATED
+        "element_3":  "applicant_first_name",
+        "element_77": "applicant_last_name",
+        "element_79": "applicant_email",
+        "element_12": "pastor_name",
+        "element_11": "church_name",
+        "element_67": "pastor_email",
+        "element_4":  "date_of_birth",
+        "element_78": "street_address",
+        "element_9":  "phone",
+        "element_72": "rating_commitment",
     },
     "required_fields": ["applicant_first_name", "applicant_last_name"],
     "named_mappings": {
-        "applicant_first_name": "FirstNmeNombre",
-        "applicant_last_name": "LastNameApellido",
-        "applicant_email": "EmailICorreoElectrónicoI"
+        "applicant_first_name": "Nombre",
+        "applicant_last_name": "Apellido",
+        "applicant_email": "CorreoElectrónico", # Note: Warning about duplicate keys in source, preferring element ID if available
+        "pastor_name": "NombreDelPastor",
+        "church_name": "NombreDeLaIglesia",
+        "date_of_birth": "FechaDeNacimiento",
+        "street_address": "Dirección",
+        "phone": "TeléfonoCelular"
     }
 }
 

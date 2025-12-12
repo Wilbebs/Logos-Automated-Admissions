@@ -5,19 +5,27 @@ FORM_CONFIG = {
     "form_name": "Formulario de Experiencia Ministerial",
     "detection_fields": ["element_26", "element_33"],  # ← UNIQUE: years_attending + ministry role
     "field_mappings": {
-        "element_16": "applicant_first_name",   # UPDATED
-        "element_67": "applicant_last_name",    # UPDATED
-        "element_66": "email",                  # UPDATED
-        "element_1":  "church_name",            # UPDATED
-        "element_55": "years_attending_church", # UPDATED
-        "element_64": "ministry_position",      # UPDATED
+        "element_16": "applicant_first_name",
+        "element_67": "applicant_last_name",
+        "element_66": "email",
+        "element_1":  "church_name",
+        "element_55": "years_attending_church",
+        "element_64": "ministry_position",
+        "element_78": "street_address",
+        "element_22": "phone",
+        "element_3":  "pastor_name",
+        "element_56": "whatsapp"
     },
     "required_fields": ["applicant_first_name", "applicant_last_name", "email"],
     "named_mappings": {
-        # Likely similar patterns but need verification
-        "applicant_first_name": "FirstNmeNombre", 
-        "applicant_last_name": "LastNameApellido",
-        "email": "EmailICorreoElectrónicoI"
+        "applicant_first_name": "Nombre",
+        "applicant_last_name": "Apellido",
+        "email": "CorreoElectrónico",
+        "church_name": "NombreDeLaIglesia",
+        "street_address": "DirecciónDeResidencia",
+        "phone": "Teléfono",
+        "pastor_name": "NombreDelPastor",
+        "whatsapp": "DeWhatsapp"
     }
 }
 
