@@ -28,6 +28,14 @@ sf_client = salesforce_client.SalesforceClient()
 def home():
     return "LOGOS UCL - Multi-Form Admissions System (v2.0)"
 
+@app.route('/health')
+def health():
+    """Health check endpoint"""
+    return jsonify({
+        "status": "healthy",
+        "salesforce": "connected" if sf_client else "disconnected"
+    })
+
 def process_webhook(raw_data, form_type, form_config_module):
     """
     Unified webhook processing for all form types
@@ -234,11 +242,20 @@ def process_webhook(raw_data, form_type, form_config_module):
         "email_sent": True
     })
 
+def get_safe_data():
+    """Helper to safely get JSON or Form data"""
+    if request.is_json:
+        print("📨 WEBHOOK RECEIVED (JSON format)")
+        return request.get_json()
+    else:
+        print("📨 WEBHOOK RECEIVED (Form data format)")
+        return request.form.to_dict()
+
 # --- SPECIFIC ROUTES ---
 
 @app.route('/webhook/estados-unidos', methods=['POST'])
 def webhook_estados_unidos():
-    raw_data = request.get_json() or request.form.to_dict()
+    raw_data = get_safe_data()
     return process_webhook(
         raw_data=raw_data,
         form_type="Solicitud Oficial de Admisión Estados Unidos y el Mundo",
@@ -247,7 +264,7 @@ def webhook_estados_unidos():
 
 @app.route('/webhook/latinoamerica', methods=['POST'])
 def webhook_latinoamerica():
-    raw_data = request.get_json() or request.form.to_dict()
+    raw_data = get_safe_data()
     return process_webhook(
         raw_data=raw_data,
         form_type="Solicitud Oficial de Admisión Latinoamérica",
@@ -256,7 +273,7 @@ def webhook_latinoamerica():
 
 @app.route('/webhook/experiencia', methods=['POST'])
 def webhook_experiencia():
-    raw_data = request.get_json() or request.form.to_dict()
+    raw_data = get_safe_data()
     return process_webhook(
         raw_data=raw_data,
         form_type="Formulario de Experiencia Ministerial",
@@ -265,7 +282,7 @@ def webhook_experiencia():
 
 @app.route('/webhook/recomendacion', methods=['POST'])
 def webhook_recomendacion():
-    raw_data = request.get_json() or request.form.to_dict()
+    raw_data = get_safe_data()
     return process_webhook(
         raw_data=raw_data,
         form_type="Formulario de Recomendación Pastoral",

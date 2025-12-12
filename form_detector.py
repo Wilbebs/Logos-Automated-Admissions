@@ -69,17 +69,21 @@ def detect_form(raw_data: dict) -> dict:
     return None
 
 
-def extract_student_data(raw_data: dict) -> dict:
+def extract_student_data(raw_data: dict, forced_module=None) -> dict:
     """
     Detect form and extract standardized student data.
     
     Args:
         raw_data: Raw webhook data
+        forced_module: Optional specific form module to use (skips detection)
         
     Returns:
         Standardized student data dict
     """
-    form_module = detect_form(raw_data)
+    if forced_module:
+        form_module = forced_module
+    else:
+        form_module = detect_form(raw_data)
     
     if form_module and hasattr(form_module, 'extract_student_data'):
         return form_module.extract_student_data(raw_data)
