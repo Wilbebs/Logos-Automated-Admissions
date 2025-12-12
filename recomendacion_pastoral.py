@@ -12,7 +12,12 @@ FORM_CONFIG = {
         "element_28": "time_known",             # Keep existing?
         "element_72": "rating_commitment",      # UPDATED
     },
-    "required_fields": ["applicant_first_name", "applicant_last_name"]
+    "required_fields": ["applicant_first_name", "applicant_last_name"],
+    "named_mappings": {
+        "applicant_first_name": "FirstNmeNombre",
+        "applicant_last_name": "LastNameApellido",
+        "applicant_email": "EmailICorreoElectrónicoI"
+    }
 }
 
 def extract_student_data(raw_data: dict) -> dict:
@@ -21,6 +26,10 @@ def extract_student_data(raw_data: dict) -> dict:
     for element_id, field_name in mappings.items():
         if element_id in raw_data:
             student_data[field_name] = raw_data[element_id]
+        else:
+            named_key = FORM_CONFIG.get("named_mappings", {}).get(field_name)
+            if named_key and named_key in raw_data:
+                student_data[field_name] = raw_data[named_key]
     
     student_data["applicant_name"] = f"{student_data.get('applicant_first_name', '')} {student_data.get('applicant_last_name', '')}".strip()
     student_data["email"] = student_data.get("applicant_email", "No email")

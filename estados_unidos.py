@@ -18,29 +18,35 @@ FORM_CONFIG = {
     # Map MachForm element IDs to standardized field names
     "field_mappings": {
         # Personal Information
-        "element_1_1": "applicant_title",       # Keep original if uncertain, user didn't specify replacement
-        "element_1_2": "applicant_name_prefix", # Keep original if uncertain
-        "element_143": "applicant_first_name",  # UPDATED
-        "element_6":   "applicant_last_name",   # UPDATED
+        "element_1_1": "applicant_title",
+        "element_1_2": "applicant_name_prefix",
+        "element_143": "applicant_first_name",
+        "element_6":   "applicant_last_name",
         "element_3":   "gender",
-        "element_147": "study_level_selected",  # UPDATED
-        "element_148": "program_interest",      # UPDATED
-        
-        # Address
-        "element_6_1": "street_address", # Guessing based on "element_6" being lastname, maybe address is different now? 
-                                         # User didn't specify address fields, keeping defaults might be risky if IDs shifted.
-                                         # But we must update the KNOWN ones.
+        "element_147": "study_level_selected",
+        "element_148": "program_interest",
         
         # Contact
-        "element_4":   "email",             # UPDATED
+        "element_4":   "email",
         
         # Ministry Information
-        "element_28":  "ministry_role",     # UPDATED (User said "Ministry")
-        "element_27":  "church_name",       # UPDATED (User said "Church")
+        "element_28":  "ministry_role",
+        "element_27":  "church_name",
         
         # System fields
         "entry_no": "submission_id",
         "date_created": "submitted_at",
+    },
+    
+    # Alternative named keys (from MachForm "Send Form Data")
+    "named_mappings": {
+        "applicant_first_name": "FirstNmeNombre",
+        "applicant_last_name": "LastNameApellido",
+        "email": "EmailICorreoElectrónicoI",
+        "study_level_selected": "StudyLevelsNivelesDeEstudio",
+        "program_interest": "AreaOfinterestÁreaDeInteré",
+        "ministry_role": "MinistryMinisterio",
+        "church_name": "ChurchIglesiaMinistryMinisterio"
     },
     
     # Required fields
@@ -64,9 +70,16 @@ def extract_student_data(raw_data: dict) -> dict:
     }
     
     # Map all fields
+    # Map all fields (checking both ID and Named keys)
     for element_id, field_name in mappings.items():
+        # 1. Try Element ID first (standard JSON)
         if element_id in raw_data:
             student_data[field_name] = raw_data[element_id]
+        else:
+            # 2. Try Named Key (Form Data)
+            named_key = FORM_CONFIG.get("named_mappings", {}).get(field_name)
+            if named_key and named_key in raw_data:
+                student_data[field_name] = raw_data[named_key]
     
     # Standardize some fields
     student_data["applicant_name"] = f"{student_data.get('applicant_first_name', '')} {student_data.get('applicant_last_name', '')}".strip()
