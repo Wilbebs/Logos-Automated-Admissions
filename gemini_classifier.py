@@ -7,6 +7,7 @@ import vertexai
 from vertexai.generative_models import GenerativeModel
 import os
 import json
+from google.oauth2 import service_account
 from typing import Dict, List, Optional
 from application_tracker import get_tracker, ApplicationStatus
 
@@ -25,7 +26,23 @@ class MultiFormClassifier:
         
         print(f"[CLASSIFIER] Initializing Vertex AI: {project_id} / {location}")
         
-        vertexai.init(project=project_id, location=location)
+        # Load credentials from environment variable
+        credentials_json = os.getenv('GOOGLE_APPLICATION_CREDENTIALS_JSON')
+        
+        if credentials_json:
+            # Parse JSON and create credentials object
+            try:
+                credentials_info = json.loads(credentials_json)
+                credentials = service_account.Credentials.from_service_account_info(credentials_info)
+                vertexai.init(project=project_id, location=location, credentials=credentials)
+                print("[CLASSIFIER] Using service account credentials")
+            except Exception as e:
+                print(f"[CLASSIFIER] Error loading service account credentials: {e}")
+                vertexai.init(project=project_id, location=location)
+        else:
+            # Fallback to default credentials (for local development)
+            vertexai.init(project=project_id, location=location)
+            print("[CLASSIFIER] Using default credentials")
         
         # Use Gemini 1.5 Flash via Vertex AI
         self.model = GenerativeModel('gemini-1.5-flash-002')
