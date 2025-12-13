@@ -3,7 +3,8 @@ Enhanced Multi-Form Classifier
 Combines data from multiple forms for comprehensive classification
 """
 
-import google.generativeai as genai
+import vertexai
+from vertexai.generative_models import GenerativeModel
 import os
 import json
 from typing import Dict, List, Optional
@@ -18,8 +19,16 @@ class MultiFormClassifier:
     """
     
     def __init__(self):
-        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-        self.model = genai.GenerativeModel('gemini-2.5-flash')
+        # Initialize Vertex AI with project credentials
+        project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'gen-lang-client-0586026725')
+        location = os.getenv('GOOGLE_CLOUD_LOCATION', 'us-central1')
+        
+        print(f"[CLASSIFIER] Initializing Vertex AI: {project_id} / {location}")
+        
+        vertexai.init(project=project_id, location=location)
+        
+        # Use Gemini 1.5 Flash via Vertex AI
+        self.model = GenerativeModel('gemini-1.5-flash-002')
         self.tracker = get_tracker()
     
     def classify_single_form(self, student_data: Dict) -> Dict:
@@ -31,7 +40,7 @@ class MultiFormClassifier:
         
         try:
             response = self.model.generate_content(prompt)
-            response_text = self._extract_response_text(response)
+            response_text = response.text
             response_text = response_text.replace('```json', '').replace('```', '').strip()
             
             classification = json.loads(response_text)
@@ -115,7 +124,7 @@ class MultiFormClassifier:
         
         try:
             response = self.model.generate_content(prompt)
-            response_text = self._extract_response_text(response)
+            response_text = response.text
             response_text = response_text.replace('```json', '').replace('```', '').strip()
             
             classification = json.loads(response_text)
@@ -270,13 +279,7 @@ Return ONLY valid JSON without any markdown formatting:
         
         return prompt
     
-    def _extract_response_text(self, response) -> str:
-        """Safely extract text from Gemini response"""
-        if hasattr(response, 'candidates') and response.candidates:
-            candidate = response.candidates[0]
-            if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts') and candidate.content.parts:
-                return candidate.content.parts[0].text
-        return ""
+
     
     def _get_fallback_classification(self) -> Dict:
         """Fallback classification when AI fails"""
