@@ -45,7 +45,7 @@ class MultiFormClassifier:
             print("[CLASSIFIER] Using default credentials")
         
         # Use Gemini 1.5 Flash via Vertex AI
-        self.model = GenerativeModel('gemini-1.5-flash-002')
+        self.model = GenerativeModel('gemini-2.5-flash')
         self.tracker = get_tracker()
     
     def classify_single_form(self, student_data: Dict) -> Dict:
