@@ -51,6 +51,21 @@ def process_webhook(raw_data, form_type, form_config_module):
     print(f"📦 Data fields received: {len(raw_data)}")
     print(f"📄 Processing Form Type: {form_type}")
 
+    # NEW: Debug check for file/upload fields
+    print("\n🔍 CHECKING FOR FILE UPLOADS:")
+    file_fields_found = False
+    for key, value in raw_data.items():
+        # Look for fields containing file-related keywords
+        if any(keyword in key.lower() for keyword in ['file', 'upload', 'document', 'attach']):
+            file_fields_found = True
+            # Show first 200 chars of value to see if it's a URL, base64, or metadata
+            value_preview = str(value)[:200] + "..." if len(str(value)) > 200 else str(value)
+            print(f"  📎 FOUND: {key} = {value_preview}")
+    
+    if not file_fields_found:
+        print("  ⚠️ No file-related fields detected in webhook data")
+    print("="*60 + "\n")
+
     # STEP 1: Extract Data using the specific module
     try:
         student_data = form_config_module.extract_student_data(raw_data)
