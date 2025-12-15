@@ -37,33 +37,39 @@ def health():
     })
 
 def process_webhook(raw_data, form_type, form_config_module):
-    """
-    Unified webhook processing for all form types
-    
-    Args:
-        raw_data: Request data from MachForm
-        form_type: String - full form name for Salesforce
-        form_config_module: The imported module (estados_unidos, etc.) to extract data
-    """
     print("\n" + "="*60)
     print("📨 WEBHOOK RECEIVED")
     print("="*60)
     print(f"📦 Data fields received: {len(raw_data)}")
     print(f"📄 Processing Form Type: {form_type}")
 
-    # NEW: Debug check for file/upload fields
-    print("\n🔍 CHECKING FOR FILE UPLOADS:")
-    file_fields_found = False
-    for key, value in raw_data.items():
-        # Look for fields containing file-related keywords
-        if any(keyword in key.lower() for keyword in ['file', 'upload', 'document', 'attach']):
-            file_fields_found = True
-            # Show first 200 chars of value to see if it's a URL, base64, or metadata
-            value_preview = str(value)[:200] + "..." if len(str(value)) > 200 else str(value)
-            print(f"  📎 FOUND: {key} = {value_preview}")
+    # ENHANCED: Check ALL fields for potential file data
+    print("\n🔍 DETAILED FIELD ANALYSIS:")
+    print("-" * 60)
     
-    if not file_fields_found:
-        print("  ⚠️ No file-related fields detected in webhook data")
+    for key, value in raw_data.items():
+        value_str = str(value)
+        
+        # Check if value looks like a file path or URL
+        is_file_related = (
+            'file' in key.lower() or 
+            'upload' in key.lower() or 
+            'document' in key.lower() or
+            'attach' in key.lower() or
+            '.pdf' in value_str.lower() or
+            '.jpg' in value_str.lower() or
+            '.png' in value_str.lower() or
+            '.doc' in value_str.lower() or
+            '/data/' in value_str or
+            'machform/data/' in value_str or
+            value_str.startswith('http')
+        )
+        
+        if is_file_related:
+            value_preview = value_str[:300] + "..." if len(value_str) > 300 else value_str
+            print(f"📎 {key}: {value_preview}")
+    
+    print("-" * 60)
     print("="*60 + "\n")
 
     # STEP 1: Extract Data using the specific module
