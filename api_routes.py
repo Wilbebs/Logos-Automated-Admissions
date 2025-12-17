@@ -84,18 +84,12 @@ def register_api_routes(app, sf_client):
             page = int(request.args.get('page', 1))
             limit = int(request.args.get('limit', 20))
             
-            # Build SOQL query
+            # Build SOQL query - SIMPLIFIED
             where_clauses = ["Email != NULL"]
             
             if search:
-                where_clauses.append(f"(FirstName LIKE '%{search}%' OR LastName LIKE '%{search}%' OR Email LIKE '%{search}%')")
-            
-            if status == 'incomplete':
-                where_clauses.append("Forms_Complete__c = false")
-            elif status == 'pending':
-                where_clauses.append("Forms_Complete__c = true AND Id NOT IN (SELECT Lead__c FROM Classification__c)")
-            elif status == 'classified':
-                where_clauses.append("Id IN (SELECT Lead__c FROM Classification__c)")
+                search_safe = search.replace("'", "\\'")
+                where_clauses.append(f"(FirstName LIKE '%{search_safe}%' OR LastName LIKE '%{search_safe}%' OR Email LIKE '%{search_safe}%')")
             
             where_clause = " AND ".join(where_clauses)
             
@@ -103,13 +97,12 @@ def register_api_routes(app, sf_client):
             count_query = f"SELECT COUNT(Id) cnt FROM Lead WHERE {where_clause}"
             total = sf_client.sf.query(count_query)['records'][0]['cnt']
             
-            # Get paginated results
+            # Get paginated results - WITHOUT subquery
             offset = (page - 1) * limit
             query = f"""
                 SELECT Id, FirstName, LastName, Email, Phone,
                        Forms_Submitted_Count__c, Forms_Complete__c,
-                       Last_Form_Received__c, CreatedDate,
-                       (SELECT Recommended_Level__c FROM Classifications__r LIMIT 1)
+                       Last_Form_Received__c, CreatedDate
                 FROM Lead
                 WHERE {where_clause}
                 ORDER BY Last_Form_Received__c DESC NULLS LAST
@@ -118,14 +111,31 @@ def register_api_routes(app, sf_client):
             
             results = sf_client.sf.query(query)
             
+            # Get all Lead IDs to query classifications separately
+            lead_ids = [r['Id'] for r in results['records']]
+            
+            # Query classifications separately
+            classifications = {}
+            if lead_ids:
+                ids_str = "','".join(lead_ids)
+                class_query = sf_client.sf.query(f"""
+                    SELECT Lead__c, Recommended_Level__c
+                    FROM Classification__c
+                    WHERE Lead__c IN ('{ids_str}')
+                """)
+                
+                for c in class_query['records']:
+                    classifications[c['Lead__c']] = c.get('Recommended_Level__c')
+            
             # Format applicants
             applicants = []
             for record in results['records']:
-                # Determine status
-                forms_count = record.get('Forms_Submitted_Count__c', 0) or 0
+                lead_id = record['Id']
+                forms_count = record.get('Forms_Submitted_Count__c') or 0
                 forms_complete = record.get('Forms_Complete__c', False)
-                has_classification = len(record.get('Classifications__r', {}).get('records', [])) > 0
+                has_classification = lead_id in classifications
                 
+                # Determine status
                 if forms_count < 3:
                     app_status = 'incomplete'
                 elif forms_complete and not has_classification:
@@ -133,36 +143,35 @@ def register_api_routes(app, sf_client):
                 else:
                     app_status = 'classified'
                 
-                # Get recommended level
-                recommended_level = None
-                if has_classification:
-                    recommended_level = record['Classifications__r']['records'][0].get('Recommended_Level__c')
-                
                 applicants.append({
-                    'id': record['Id'],
-                    'first_name': record.get('FirstName', ''),
-                    'last_name': record.get('LastName', ''),
-                    'email': record.get('Email', ''),
+                    'id': lead_id,
+                    'first_name': record.get('FirstName') or '',
+                    'last_name': record.get('LastName') or '',
+                    'email': record.get('Email') or '',
                     'forms_submitted': int(forms_count),
                     'status': app_status,
-                    'recommended_level': recommended_level,
+                    'recommended_level': classifications.get(lead_id),
                     'last_activity': record.get('Last_Form_Received__c') or record.get('CreatedDate')
                 })
             
-            # Filter by level if specified
+            # Filter by status/level if specified
+            if status != 'all':
+                applicants = [a for a in applicants if a['status'] == status]
+            
             if level != 'all':
                 applicants = [a for a in applicants if a.get('recommended_level') == level]
-                total = len(applicants)
             
             return jsonify({
                 'applicants': applicants,
-                'total': total,
+                'total': len(applicants),
                 'page': page,
-                'total_pages': (total + limit - 1) // limit
+                'total_pages': (len(applicants) + limit - 1) // limit
             })
             
         except Exception as e:
+            import traceback
             print(f"[API] Error getting applicants: {e}")
+            print(traceback.format_exc())
             return jsonify({'error': str(e)}), 500
     
     
