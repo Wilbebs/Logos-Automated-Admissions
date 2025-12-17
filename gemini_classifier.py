@@ -330,6 +330,22 @@ def classify_student(student_data: Dict) -> Dict:
             
             if files:
                 print(f"[CLASSIFIER] Found {len(files)} uploaded files")
+                
+                # Download files
+                downloaded_files = []
+                for file_info in files[:5]:  # Limit to 5 files for now
+                    local_path = mf.download_file(
+                        file_info['hashed_filename'],
+                        file_info['form_id']
+                    )
+                    if local_path:
+                        downloaded_files.append(local_path)
+                
+                # Add files to Gemini prompt - TODO: Implement upload
+                if downloaded_files:
+                    print(f"[CLASSIFIER] Sending {len(downloaded_files)} files to Gemini")
+                    student_data['downloaded_files'] = downloaded_files
+                    
                 # Attach to student_data for potential use in prompts or downstream
                 student_data['uploaded_files'] = files
         except Exception as e:

@@ -1,5 +1,7 @@
 import pymysql
 import os
+import requests
+from pathlib import Path
 
 class MachFormClient:
     def __init__(self):
@@ -100,3 +102,30 @@ class MachFormClient:
                     'file_path': f"/home/zpdorvfa/public_html/forms/data/form_{form_id}/files/{value}"
                 })
         return files
+
+    def download_file(self, hashed_filename, form_id, save_dir='/tmp/machform_files'):
+        """Download a file from MachForm server"""
+        try:
+            # URL to download file - assuming standard MachForm data structure accessible via web
+            # NOTE: This assumes files are publicly accessible or this server IP is whitelisted
+            file_url = f"https://logoscu.com/forms/data/form_{form_id}/files/{hashed_filename}"
+            
+            # Create save directory
+            Path(save_dir).mkdir(parents=True, exist_ok=True)
+            
+            # Download file
+            response = requests.get(file_url, timeout=30)
+            
+            if response.status_code == 200:
+                local_path = f"{save_dir}/{hashed_filename}"
+                with open(local_path, 'wb') as f:
+                    f.write(response.content)
+                print(f"[MACHFORM] Downloaded: {hashed_filename}")
+                return local_path
+            else:
+                print(f"[MACHFORM] Failed to download {hashed_filename}: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            print(f"[MACHFORM] Error downloading file: {e}")
+            return None

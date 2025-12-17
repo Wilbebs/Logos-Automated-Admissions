@@ -8,3 +8,4 @@ resend==0.8.0
 simple-salesforce==1.12.6
 flask-cors
 PyMySQL
+requests
