@@ -85,29 +85,7 @@ def process_webhook(raw_data, form_type, form_config_module):
         # Ensure form_name is set correctly (force overwrite with the trusted type)
         student_data['form_name'] = form_type
 
-        # Retrieve files from MachForm DB
-        entry_id = raw_data.get('EntryNumber')
-        form_id = raw_data.get('FormID')
-
-        print(f"[DEBUG] Raw data keys: {list(raw_data.keys())}")
-        print(f"[DEBUG] EntryNumber: {entry_id}")
-        print(f"[DEBUG] FormID: {form_id}")
-
-        if entry_id and form_id:
-            print(f"[FILES] Attempting to fetch files for entry {entry_id}, form {form_id}")
-            try:
-                mf_client = machform_client.MachFormClient()
-                files = mf_client.get_uploaded_files(form_id, entry_id)
-                
-                if files:
-                    print(f"[FILES] Found {len(files)} uploaded files")
-                    student_data['uploaded_files'] = files
-                else:
-                    print(f"[FILES] No files found for this entry")
-            except Exception as e:
-                print(f"[FILES] Error retrieving files: {e}")
-        else:
-            print(f"[FILES] Skipping - EntryNumber or FormID not found in webhook data")
+        # Old file retrieval logic removed - moved to gemini_classifier.py
         
         print(f"\n🔍 STEP 1: Data Extraction")
         print(f"✓ Applicant: {student_data.get('applicant_name')}")

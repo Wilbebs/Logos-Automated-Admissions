@@ -318,6 +318,22 @@ def classify_student(student_data: Dict) -> Dict:
     """
     classifier = MultiFormClassifier()
     email = student_data.get('email')
+
+    # NEW: Fetch files from MachForm if we have email
+    if email:
+        try:
+            from machform_client import MachFormClient
+            mf = MachFormClient()
+            
+            # Query MachForm for entries by this email
+            files = mf.get_files_by_email(email)
+            
+            if files:
+                print(f"[CLASSIFIER] Found {len(files)} uploaded files")
+                # Attach to student_data for potential use in prompts or downstream
+                student_data['uploaded_files'] = files
+        except Exception as e:
+            print(f"[CLASSIFIER] Could not retrieve files: {e}")
     
     # Priority 1: Use direct Salesforce data if available
     if 'all_submissions' in student_data:
