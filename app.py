@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 import os
 import json
 from dotenv import load_dotenv
+from flask_cors import CORS
 
 # Import our custom modules
 import form_detector  # Might be less used now but good to keep for reference
@@ -21,6 +22,7 @@ import api_routes
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)
 
 # Initialize Salesforce Client
 sf_client = salesforce_client.SalesforceClient()

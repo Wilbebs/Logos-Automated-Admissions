@@ -6,3 +6,4 @@ python-dotenv==1.0.0
 gunicorn==21.2.0
 resend==0.8.0
 simple-salesforce==1.12.6
+flask-cors
