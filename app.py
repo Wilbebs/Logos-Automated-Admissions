@@ -15,6 +15,7 @@ import salesforce_client
 import docx_generator
 import email_sender
 import application_tracker
+import api_routes
 
 # Load environment variables
 load_dotenv()
@@ -23,6 +24,9 @@ app = Flask(__name__)
 
 # Initialize Salesforce Client
 sf_client = salesforce_client.SalesforceClient()
+
+# Register API routes
+api_routes.register_api_routes(app, sf_client)
 
 @app.route('/', methods=['GET'])
 def home():
