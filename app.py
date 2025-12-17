@@ -17,6 +17,7 @@ import docx_generator
 import email_sender
 import application_tracker
 import api_routes
+import machform_client
 
 # Load environment variables
 load_dotenv()
@@ -83,6 +84,21 @@ def process_webhook(raw_data, form_type, form_config_module):
         student_data = form_config_module.extract_student_data(raw_data)
         # Ensure form_name is set correctly (force overwrite with the trusted type)
         student_data['form_name'] = form_type
+
+        # Retrieve files from MachForm DB
+        entry_id = raw_data.get('EntryNumber')
+        form_id = raw_data.get('FormID')
+
+        if entry_id and form_id:
+            try:
+                mf_client = machform_client.MachFormClient()
+                files = mf_client.get_uploaded_files(form_id, entry_id)
+                
+                if files:
+                    print(f"[FILES] Found {len(files)} uploaded files")
+                    student_data['uploaded_files'] = files
+            except Exception as e:
+                print(f"[MACHFORM] Connection error: {e}")
         
         print(f"\n🔍 STEP 1: Data Extraction")
         print(f"✓ Applicant: {student_data.get('applicant_name')}")
