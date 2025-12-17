@@ -13,6 +13,10 @@ class MachFormClient:
             cursorclass=pymysql.cursors.DictCursor
         )
         print(f"[MACHFORM] Connected to {os.getenv('MACHFORM_DB_HOST')}")
+        
+        # Session for authenticated requests
+        self.session = requests.Session()
+        self.authenticated = False
     
     def get_uploaded_files(self, form_id, entry_id):
         """Get file hashes for a form entry"""
@@ -103,18 +107,63 @@ class MachFormClient:
                 })
         return files
 
-    def download_file(self, hashed_filename, form_id, save_dir='/tmp/machform_files'):
-        """Download a file from MachForm server"""
+        return files
+
+    def login(self):
+        """Authenticate to MachForm admin"""
         try:
-            # URL to download file - assuming standard MachForm data structure accessible via web
-            # NOTE: This assumes files are publicly accessible or this server IP is whitelisted
+            login_url = "https://logoscu.com/forms/login.php"
+            
+            # Get admin credentials from env vars
+            username = os.getenv('MACHFORM_ADMIN_USER')
+            password = os.getenv('MACHFORM_ADMIN_PASSWORD')
+            
+            if not username or not password:
+                print("[MACHFORM] Admin credentials not found")
+                return False
+            
+            # POST login
+            response = self.session.post(login_url, data={
+                'admin_username': username,
+                'admin_password': password,
+                'submit': 'Log In'
+            })
+            
+            # Check for success (MachForm redirects to index.php or shows dashboard)
+            if response.status_code == 200 and ('manage_forms' in response.text or 'logout.php' in response.text):
+                print("[MACHFORM] Successfully authenticated")
+                self.authenticated = True
+                return True
+            # Alternative check if redirection happens
+            elif response.history and 'index.php' in response.url:
+                 print("[MACHFORM] Successfully authenticated (redirect)")
+                 self.authenticated = True
+                 return True
+            else:
+                print(f"[MACHFORM] Login failed. Status: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"[MACHFORM] Login error: {e}")
+            return False
+
+    def download_file(self, hashed_filename, form_id, save_dir='/tmp/machform_files'):
+        """Download a file from MachForm server using authenticated session"""
+        try:
+            # Login if not already authenticated
+            if not self.authenticated:
+                if not self.login():
+                    print("[MACHFORM] Cannot download - authentication failed")
+                    return None
+            
+            # URL to download file
             file_url = f"https://logoscu.com/forms/data/form_{form_id}/files/{hashed_filename}"
             
             # Create save directory
             Path(save_dir).mkdir(parents=True, exist_ok=True)
             
-            # Download file
-            response = requests.get(file_url, timeout=30)
+            # Download file using session
+            response = self.session.get(file_url, timeout=30)
             
             if response.status_code == 200:
                 local_path = f"{save_dir}/{hashed_filename}"
