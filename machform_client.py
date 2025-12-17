@@ -4,12 +4,13 @@ import os
 class MachFormClient:
     def __init__(self):
         self.connection = pymysql.connect(
-            host=os.getenv('MACHFORM_DB_HOST', 'localhost'),
+            host=os.getenv('MACHFORM_DB_HOST'),
             database=os.getenv('MACHFORM_DB_NAME'),
             user=os.getenv('MACHFORM_DB_USER'),
             password=os.getenv('MACHFORM_DB_PASSWORD'),
             cursorclass=pymysql.cursors.DictCursor
         )
+        print(f"[MACHFORM] Connected to {os.getenv('MACHFORM_DB_HOST')}")
     
     def get_uploaded_files(self, form_id, entry_id):
         """Get file hashes for a form entry"""
