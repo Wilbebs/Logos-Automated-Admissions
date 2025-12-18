@@ -330,29 +330,42 @@ def classify_student(student_data: Dict) -> Dict:
             
             if files:
                 print(f"[CLASSIFIER] Found {len(files)} uploaded files")
+                print(f"[CLASSIFIER] Attempting to download files...")
                 
-                # Group files by entry to minimize page loads
+                # Group by entry
                 entries = {}
-                for file_info in files[:10]:  # Limit to 10 files
-                    key = (file_info['form_id'], file_info.get('entry_id'))
+                for file_info in files[:10]:
+                    form_id = file_info.get('form_id')
+                    entry_id = file_info.get('entry_id')
+                    
+                    print(f"[CLASSIFIER] File: form={form_id}, entry={entry_id}")
+                    
+                    if not entry_id:
+                        print(f"[CLASSIFIER] Skipping file - no entry_id")
+                        continue
+                        
+                    key = (form_id, entry_id)
                     if key not in entries:
                         entries[key] = []
                     entries[key].append(file_info)
                 
+                print(f"[CLASSIFIER] Grouped into {len(entries)} entries")
+                
                 downloaded_files = []
                 for (form_id, entry_id), file_list in entries.items():
-                    if entry_id:
-                        # Get download links from entry page
-                        links = mf.get_download_links_from_entry(form_id, entry_id)
-                        
-                        for link in links:
-                            local_path = mf.download_file_from_link(link['url'], link['filename'])
-                            if local_path:
-                                downloaded_files.append(local_path)
+                    print(f"[CLASSIFIER] Processing entry: form={form_id}, entry={entry_id}")
+                    
+                    links = mf.get_download_links_from_entry(form_id, entry_id)
+                    
+                    for link in links:
+                        local_path = mf.download_file_from_link(link['url'], link['filename'])
+                        if local_path:
+                            downloaded_files.append(local_path)
+                
+                print(f"[CLASSIFIER] Total files downloaded: {len(downloaded_files)}")
                 
                 # Add files to Gemini prompt - TODO: Implement upload
                 if downloaded_files:
-                    print(f"[CLASSIFIER] Successfully downloaded {len(downloaded_files)} files")
                     student_data['downloaded_files'] = downloaded_files
                     
                 # Attach to student_data for potential use in prompts or downstream
