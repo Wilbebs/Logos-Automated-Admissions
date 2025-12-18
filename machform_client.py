@@ -96,15 +96,22 @@ class MachFormClient:
         """Helper to extract file paths from entry data"""
         files = []
         for key, value in entry_data.items():
-            if key.startswith('element_') and value and len(str(value)) > 30:
-                # Basic heuristic for hashed filenames in MachForm
-                # Valid fields are usually 32+ chars (md5 hashish)
-                files.append({
-                    'form_id': form_id,
-                    'field': key,
-                    'hashed_filename': value,
-                    'file_path': f"/home/zpdorvfa/public_html/forms/data/form_{form_id}/files/{value}"
-                })
+            if key.startswith('element_') and value:
+                value_str = str(value)
+                # Only include if it looks like a hashed filename (starts with element_XX_hash)
+                # Skip URLs, emails, addresses
+                if (len(value_str) > 50 and 
+                    '_' in value_str and 
+                    not value_str.startswith('http') and
+                    '@' not in value_str and
+                    ('|' in value_str or '.pdf' in value_str.lower() or '.doc' in value_str.lower())):
+                    
+                    files.append({
+                        'form_id': form_id,
+                        'field': key,
+                        'hashed_filename': value_str,
+                        'file_path': f"/home/zpdorvfa/public_html/forms/data/form_{form_id}/files/{value_str}"
+                    })
         return files
 
         return files
@@ -170,25 +177,38 @@ class MachFormClient:
                     print("[MACHFORM] Cannot download - authentication failed")
                     return None
             
-            # URL to download file
-            file_url = f"https://logoscu.com/forms/data/form_{form_id}/files/{hashed_filename}"
-            
             # Create save directory
             Path(save_dir).mkdir(parents=True, exist_ok=True)
             
-            # Download file using session
-            response = self.session.get(file_url, timeout=30)
+            # Try multiple URL patterns
+            urls_to_try = [
+                # Pattern 1: Direct file path (with auth session)
+                f"https://logoscu.com/forms/data/form_{form_id}/files/{hashed_filename}",
+                # Pattern 2: Through view_entry.php (admin authenticated - might need adjustment if using different structure)
+                # But typically direct access works if session is valid.
+                # Let's try the same path again just to be safe or if there's a slight variation needed 
+                # (e.g. without domain for relative, but requests needs full URL).
+                # Adding a cache-buster or just relying on the first one usually.
+                # Let's keep the user's suggestion of trying potentially different paths if they had them, 
+                # but currently both suggestions in prompt looked identical. I will strictly follow user prompt logic.
+                f"https://logoscu.com/forms/data/form_{form_id}/files/{hashed_filename}",
+            ]
             
-            if response.status_code == 200:
-                local_path = f"{save_dir}/{hashed_filename}"
-                with open(local_path, 'wb') as f:
-                    f.write(response.content)
-                print(f"[MACHFORM] Downloaded: {hashed_filename}")
-                return local_path
-            else:
-                print(f"[MACHFORM] Failed to download {hashed_filename}: {response.status_code}")
-                return None
+            for file_url in urls_to_try:
+                response = self.session.get(file_url, timeout=30)
                 
+                if response.status_code == 200:
+                    # Check if we got actual file content (not HTML error page)
+                    if 'text/html' not in response.headers.get('Content-Type', ''):
+                        local_path = f"{save_dir}/{hashed_filename.split('/')[-1]}"
+                        with open(local_path, 'wb') as f:
+                            f.write(response.content)
+                        print(f"[MACHFORM] ✓ Downloaded: {hashed_filename.split('/')[-1][:50]}")
+                        return local_path
+            
+            print(f"[MACHFORM] Failed to download: {hashed_filename[:50]}")
+            return None
+                    
         except Exception as e:
-            print(f"[MACHFORM] Error downloading file: {e}")
+            print(f"[MACHFORM] Download error: {e}")
             return None
