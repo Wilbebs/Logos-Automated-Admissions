@@ -114,7 +114,6 @@ class MachFormClient:
         try:
             login_url = "https://logoscu.com/forms/index.php"
             
-            # Get admin credentials from env vars
             username = os.getenv('MACHFORM_ADMIN_USER')
             password = os.getenv('MACHFORM_ADMIN_PASSWORD')
             
@@ -122,25 +121,33 @@ class MachFormClient:
                 print("[MACHFORM] Admin credentials not found")
                 return False
             
-            # POST login
-            response = self.session.post(login_url, data={
-                'admin_username': username,
-                'admin_password': password,
-                'submit': 'Log In'
-            })
+            # First GET the login page to get any CSRF tokens
+            response = self.session.get(login_url)
+            print(f"[MACHFORM] Login page loaded: {response.status_code}")
             
-            # Check for success (MachForm redirects to index.php or shows dashboard)
-            if response.status_code == 200 and ('manage_forms' in response.text or 'logout.php' in response.text):
+            # POST login with common field names
+            # Note: User provided 'username'/'password'. Standard MachForm often uses 'admin_username'.
+            login_data = {
+                'username': username,
+                'password': password,
+                'submit': 'Login'
+            }
+            
+            response = self.session.post(login_url, data=login_data, allow_redirects=True)
+            
+            print(f"[MACHFORM] Login POST response: {response.status_code}")
+            print(f"[MACHFORM] Final URL: {response.url}")
+            print(f"[MACHFORM] Cookies: {len(self.session.cookies)}")
+            
+            # Check if logged in by looking for admin panel indicators
+            if 'main_panel.php' in response.url or 'main_panel' in response.text:
                 print("[MACHFORM] Successfully authenticated")
                 self.authenticated = True
                 return True
-            # Alternative check if redirection happens
-            elif response.history and 'index.php' in response.url:
-                 print("[MACHFORM] Successfully authenticated (redirect)")
-                 self.authenticated = True
-                 return True
             else:
-                print(f"[MACHFORM] Login failed. Status: {response.status_code}")
+                print(f"[MACHFORM] Login failed - no redirect to admin panel")
+                # Debug: print first 500 chars of text to see what happened
+                print(f"[MACHFORM] Response sample: {response.text[:500]}")
                 return False
                 
         except Exception as e:
