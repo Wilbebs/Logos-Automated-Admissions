@@ -331,19 +331,28 @@ def classify_student(student_data: Dict) -> Dict:
             if files:
                 print(f"[CLASSIFIER] Found {len(files)} uploaded files")
                 
-                # Download files
+                # Group files by entry to minimize page loads
+                entries = {}
+                for file_info in files[:10]:  # Limit to 10 files
+                    key = (file_info['form_id'], file_info.get('entry_id'))
+                    if key not in entries:
+                        entries[key] = []
+                    entries[key].append(file_info)
+                
                 downloaded_files = []
-                for file_info in files[:5]:  # Limit to 5 files for now
-                    local_path = mf.download_file(
-                        file_info['hashed_filename'],
-                        file_info['form_id']
-                    )
-                    if local_path:
-                        downloaded_files.append(local_path)
+                for (form_id, entry_id), file_list in entries.items():
+                    if entry_id:
+                        # Get download links from entry page
+                        links = mf.get_download_links_from_entry(form_id, entry_id)
+                        
+                        for link in links:
+                            local_path = mf.download_file_from_link(link['url'], link['filename'])
+                            if local_path:
+                                downloaded_files.append(local_path)
                 
                 # Add files to Gemini prompt - TODO: Implement upload
                 if downloaded_files:
-                    print(f"[CLASSIFIER] Sending {len(downloaded_files)} files to Gemini")
+                    print(f"[CLASSIFIER] Successfully downloaded {len(downloaded_files)} files")
                     student_data['downloaded_files'] = downloaded_files
                     
                 # Attach to student_data for potential use in prompts or downstream

@@ -95,11 +95,12 @@ class MachFormClient:
     def _extract_files_from_entry(self, entry_data, form_id):
         """Helper to extract file paths from entry data"""
         files = []
+        entry_id = entry_data.get('id')  # Get entry ID
+        
         for key, value in entry_data.items():
             if key.startswith('element_') and value:
                 value_str = str(value)
-                # Only include if it looks like a hashed filename (starts with element_XX_hash)
-                # Skip URLs, emails, addresses
+                # Filter for actual files
                 if (len(value_str) > 50 and 
                     '_' in value_str and 
                     not value_str.startswith('http') and
@@ -108,9 +109,9 @@ class MachFormClient:
                     
                     files.append({
                         'form_id': form_id,
+                        'entry_id': entry_id,  # Add this
                         'field': key,
-                        'hashed_filename': value_str,
-                        'file_path': f"/home/zpdorvfa/public_html/forms/data/form_{form_id}/files/{value_str}"
+                        'hashed_filename': value_str
                     })
         return files
 
@@ -168,47 +169,67 @@ class MachFormClient:
             print(f"[MACHFORM] Login error: {e}")
             return False
 
-    def download_file(self, hashed_filename, form_id, save_dir='/tmp/machform_files'):
-        """Download a file from MachForm server using authenticated session"""
+    def get_download_links_from_entry(self, form_id, entry_id):
+        """Parse download links from entry view page"""
         try:
-            # Login if not already authenticated
             if not self.authenticated:
                 if not self.login():
-                    print("[MACHFORM] Cannot download - authentication failed")
+                    return []
+            
+            # Access the entry view page
+            entry_url = f"https://logoscu.com/forms/view_entry.php?form_id={form_id}&entry_id={entry_id}"
+            response = self.session.get(entry_url)
+            
+            if response.status_code != 200:
+                print(f"[MACHFORM] Failed to load entry page: {response.status_code}")
+                return []
+            
+            # Parse HTML for download links
+            import re
+            # Look for links like: href="download.php?q=BASE64_STRING"
+            download_pattern = r'href="(download\.php\?q=[^"]+)"[^>]*>([^<]+)</a>'
+            matches = re.findall(download_pattern, response.text)
+            
+            links = []
+            for download_path, filename in matches:
+                full_url = f"https://logoscu.com/forms/{download_path}"
+                links.append({
+                    'url': full_url,
+                    'filename': filename.strip()
+                })
+                print(f"[MACHFORM] Found download link: {filename[:50]}")
+            
+            return links
+            
+        except Exception as e:
+            print(f"[MACHFORM] Error parsing entry: {e}")
+            return []
+
+    def download_file_from_link(self, download_url, filename, save_dir='/tmp/machform_files'):
+        """Download file using authenticated download.php link"""
+        try:
+            if not self.authenticated:
+                if not self.login():
                     return None
             
-            # Create save directory
             Path(save_dir).mkdir(parents=True, exist_ok=True)
             
-            # Try multiple URL patterns
-            urls_to_try = [
-                # Pattern 1: Direct file path (with auth session)
-                f"https://logoscu.com/forms/data/form_{form_id}/files/{hashed_filename}",
-                # Pattern 2: Through view_entry.php (admin authenticated - might need adjustment if using different structure)
-                # But typically direct access works if session is valid.
-                # Let's try the same path again just to be safe or if there's a slight variation needed 
-                # (e.g. without domain for relative, but requests needs full URL).
-                # Adding a cache-buster or just relying on the first one usually.
-                # Let's keep the user's suggestion of trying potentially different paths if they had them, 
-                # but currently both suggestions in prompt looked identical. I will strictly follow user prompt logic.
-                f"https://logoscu.com/forms/data/form_{form_id}/files/{hashed_filename}",
-            ]
+            response = self.session.get(download_url, timeout=30)
             
-            for file_url in urls_to_try:
-                response = self.session.get(file_url, timeout=30)
+            if response.status_code == 200:
+                # Clean filename
+                safe_filename = filename.replace('/', '_').replace('\\', '_')
+                local_path = f"{save_dir}/{safe_filename}"
                 
-                if response.status_code == 200:
-                    # Check if we got actual file content (not HTML error page)
-                    if 'text/html' not in response.headers.get('Content-Type', ''):
-                        local_path = f"{save_dir}/{hashed_filename.split('/')[-1]}"
-                        with open(local_path, 'wb') as f:
-                            f.write(response.content)
-                        print(f"[MACHFORM] ✓ Downloaded: {hashed_filename.split('/')[-1][:50]}")
-                        return local_path
-            
-            print(f"[MACHFORM] Failed to download: {hashed_filename[:50]}")
-            return None
-                    
+                with open(local_path, 'wb') as f:
+                    f.write(response.content)
+                
+                print(f"[MACHFORM] ✓ Downloaded: {safe_filename[:50]}")
+                return local_path
+            else:
+                print(f"[MACHFORM] Download failed {filename[:30]}: {response.status_code}")
+                return None
+                
         except Exception as e:
             print(f"[MACHFORM] Download error: {e}")
             return None
