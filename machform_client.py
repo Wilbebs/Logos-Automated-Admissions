@@ -177,41 +177,48 @@ class MachFormClient:
                     return []
             
             entry_url = f"https://logoscu.com/forms/view_entry.php?form_id={form_id}&entry_id={entry_id}"
-            print(f"[MACHFORM] Fetching entry page: {entry_url}")
-            
             response = self.session.get(entry_url)
             
-            print(f"[MACHFORM] Entry page status: {response.status_code}")
-            
             if response.status_code != 200:
-                print(f"[MACHFORM] Failed to load entry page")
+                print(f"[MACHFORM] Failed to load entry page: {response.status_code}")
                 return []
             
-            # Debug: show snippet of HTML
-            print(f"[MACHFORM] Page length: {len(response.text)} chars")
-            
-            # Look for download.php links
             import re
+            
+            # Primary pattern: href="download.php?q=..."  >filename</a>
             download_pattern = r'href="(download\.php\?q=[^"]+)"[^>]*>([^<]+)</a>'
             matches = re.findall(download_pattern, response.text)
             
-            print(f"[MACHFORM] Found {len(matches)} download links")
-            
-            # Also try alternate pattern - maybe it's /forms/download.php
-            alt_pattern = r'href="([^"]*download\.php[^"]*)"'
-            alt_matches = re.findall(alt_pattern, response.text)
-            print(f"[MACHFORM] Alternate pattern found {len(alt_matches)} matches")
-            
-            if alt_matches and not matches:
-                # Use alternate pattern
-                for url in alt_matches[:3]:  # Limit to first 3
-                    print(f"[MACHFORM] Alt link: {url[:80]}")
-            
             links = []
-            for download_path, filename in matches:
-                full_url = f"https://logoscu.com/forms/{download_path}"
-                links.append({'url': full_url, 'filename': filename.strip()})
-                print(f"[MACHFORM] Found download link: {filename[:50]}")
+            
+            if matches:
+                for download_path, filename in matches:
+                    full_url = f"https://logoscu.com/forms/{download_path}"
+                    links.append({'url': full_url, 'filename': filename.strip()})
+                    print(f"[MACHFORM] Found download: {filename[:40]}")
+            else:
+                # Alternate pattern - just find any download.php URLs
+                # This catches cases where the link text isn't immediately after or different structure
+                alt_pattern = r'href="([^"]*download\.php[^"]*)"'
+                alt_matches = re.findall(alt_pattern, response.text)
+                
+                print(f"[MACHFORM] Primary pattern failed, using alternate. Found {len(alt_matches)} URLs")
+                
+                for i, url in enumerate(alt_matches):
+                    # Make sure it's a full URL
+                    if not url.startswith('http'):
+                        # If standard relative path
+                        if url.startswith('/'):
+                            url = f"https://logoscu.com{url}"
+                        else:
+                            url = f"https://logoscu.com/forms/{url}"
+                    
+                    # Generate filename from entry since we didn't capture it
+                    # Try to guess extension if possible, or just use bin/dat and let magic bytes decide later?
+                    # For now, generic name is safer than nothing.
+                    filename = f"form_{form_id}_entry_{entry_id}_file_{i+1}"
+                    links.append({'url': url, 'filename': filename})
+                    print(f"[MACHFORM] Found download URL (alt): {url[:80]}")
             
             return links
             
