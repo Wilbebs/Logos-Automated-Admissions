@@ -112,7 +112,7 @@ class MachFormClient:
     def login(self):
         """Authenticate to MachForm admin"""
         try:
-            login_url = "https://logoscu.com/forms/login.php"
+            login_url = "https://logoscu.com/forms/index.php"
             
             # Get admin credentials from env vars
             username = os.getenv('MACHFORM_ADMIN_USER')
