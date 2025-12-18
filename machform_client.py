@@ -121,33 +121,40 @@ class MachFormClient:
                 print("[MACHFORM] Admin credentials not found")
                 return False
             
-            # First GET the login page to get any CSRF tokens
+            # GET the login page to extract CSRF token
             response = self.session.get(login_url)
-            print(f"[MACHFORM] Login page loaded: {response.status_code}")
             
-            # POST login with common field names
-            # Note: User provided 'username'/'password'. Standard MachForm often uses 'admin_username'.
+            # Parse CSRF token from response
+            import re
+            csrf_match = re.search(r'name="csrf_token" value="([^"]+)"', response.text)
+            
+            if not csrf_match:
+                print("[MACHFORM] Could not find CSRF token")
+                return False
+            
+            csrf_token = csrf_match.group(1)
+            print(f"[MACHFORM] Got CSRF token: {csrf_token[:20]}...")
+            
+            # POST login with correct field names
             login_data = {
-                'username': username,
-                'password': password,
-                'submit': 'Login'
+                'admin_username': username,
+                'admin_password': password,
+                'submit': '1',
+                'csrf_token': csrf_token
             }
             
             response = self.session.post(login_url, data=login_data, allow_redirects=True)
             
-            print(f"[MACHFORM] Login POST response: {response.status_code}")
+            print(f"[MACHFORM] Login response: {response.status_code}")
             print(f"[MACHFORM] Final URL: {response.url}")
-            print(f"[MACHFORM] Cookies: {len(self.session.cookies)}")
             
-            # Check if logged in by looking for admin panel indicators
-            if 'main_panel.php' in response.url or 'main_panel' in response.text:
-                print("[MACHFORM] Successfully authenticated")
+            # Check if logged in
+            if 'main_panel' in response.url or 'manage_forms' in response.url:
+                print("[MACHFORM] ✓ Successfully authenticated!")
                 self.authenticated = True
                 return True
             else:
-                print(f"[MACHFORM] Login failed - no redirect to admin panel")
-                # Debug: print first 500 chars of text to see what happened
-                print(f"[MACHFORM] Response sample: {response.text[:500]}")
+                print(f"[MACHFORM] Login failed - stayed on login page")
                 return False
                 
         except Exception as e:
