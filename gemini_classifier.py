@@ -10,6 +10,44 @@ import json
 from google.oauth2 import service_account
 from typing import Dict, List, Optional
 from application_tracker import get_tracker, ApplicationStatus
+import base64
+from pathlib import Path
+
+def process_file_for_gemini(file_path):
+    """Convert file to format Gemini can process"""
+    try:
+        # Detect file type
+        ext = Path(file_path).suffix.lower()
+        
+        # Read file
+        with open(file_path, 'rb') as f:
+            file_data = f.read()
+        
+        # Convert to base64
+        file_b64 = base64.b64encode(file_data).decode('utf-8')
+        
+        # Map extensions to MIME types
+        mime_types = {
+            '.pdf': 'application/pdf',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.doc': 'application/msword',
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        }
+        
+        mime_type = mime_types.get(ext, 'application/octet-stream')
+        
+        return {
+            'mime_type': mime_type,
+            'data': file_b64,
+            'filename': os.path.basename(file_path)
+        }
+        
+    except Exception as e:
+        print(f"[CLASSIFIER] Error reading file {file_path}: {e}")
+        return None
 
 
 class MultiFormClassifier:
@@ -140,7 +178,20 @@ class MultiFormClassifier:
         prompt = self._build_multi_form_prompt(app, student_data)
         
         try:
-            response = self.model.generate_content(prompt)
+            # Build message content with files
+            message_content = [prompt]
+
+            # Add uploaded documents if available
+            if student_data.get('uploaded_documents'):
+                for doc in student_data['uploaded_documents']:
+                    message_content.append({
+                        'mime_type': doc['mime_type'],
+                        'data': doc['data']
+                    })
+                print(f"[CLASSIFIER] Including {len(student_data['uploaded_documents'])} documents in analysis")
+
+            # Then call Gemini with message_content instead of just prompt_text
+            response = self.model.generate_content(message_content)
             response_text = response.text
             response_text = response_text.replace('```json', '').replace('```', '').strip()
             
@@ -364,9 +415,26 @@ def classify_student(student_data: Dict) -> Dict:
                 
                 print(f"[CLASSIFIER] Total files downloaded: {len(downloaded_files)}")
                 
-                # Add files to Gemini prompt - TODO: Implement upload
                 if downloaded_files:
-                    student_data['downloaded_files'] = downloaded_files
+                    print(f"[CLASSIFIER] Successfully downloaded {len(downloaded_files)} files")
+                    
+                    # Process files for Gemini
+                    file_parts = []
+                    for file_path in downloaded_files[:5]:  # Limit to 5 files to avoid token limits
+                        try:
+                            file_part = process_file_for_gemini(file_path)
+                            if file_part:
+                                file_parts.append(file_part)
+                                print(f"[CLASSIFIER] Processed file: {os.path.basename(file_path)[:40]}")
+                        except Exception as e:
+                            print(f"[CLASSIFIER] Error processing file {file_path}: {e}")
+                    
+                    if file_parts:
+                        print(f"[CLASSIFIER] Sending {len(file_parts)} files to Gemini")
+                        # Add files to the prompt
+                        student_data['uploaded_documents'] = file_parts
+                    else:
+                        print(f"[CLASSIFIER] No files successfully processed for Gemini")
                     
                 # Attach to student_data for potential use in prompts or downstream
                 student_data['uploaded_files'] = files
