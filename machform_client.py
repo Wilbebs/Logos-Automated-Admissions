@@ -185,40 +185,34 @@ class MachFormClient:
             
             import re
             
-            # Primary pattern: href="download.php?q=..."  >filename</a>
-            download_pattern = r'href="(download\.php\?q=[^"]+)"[^>]*>([^<]+)</a>'
-            matches = re.findall(download_pattern, response.text)
+            # Robust pattern: handles absolute/relative URLs and captures filename
+            # This covers: href="download.php?q=..." OR href="https://logoscu.com/forms/download.php?q=..."
+            pattern = r'href="([^"]*download\.php\?q=[^"]+)"[^>]*>(.*?)</a>'
+            matches = re.findall(pattern, response.text)
             
             links = []
             
             if matches:
-                for download_path, filename in matches:
-                    full_url = f"https://logoscu.com/forms/{download_path}"
-                    links.append({'url': full_url, 'filename': filename.strip()})
-                    print(f"[MACHFORM] Found download: {filename[:40]}")
-            else:
-                # Alternate pattern - just find any download.php URLs
-                # This catches cases where the link text isn't immediately after or different structure
-                alt_pattern = r'href="([^"]*download\.php[^"]*)"'
-                alt_matches = re.findall(alt_pattern, response.text)
-                
-                print(f"[MACHFORM] Primary pattern failed, using alternate. Found {len(alt_matches)} URLs")
-                
-                for i, url in enumerate(alt_matches):
-                    # Make sure it's a full URL
+                for url, filename in matches:
+                    # Clean filename (strip HTML tags if any, though unlikely)
+                    clean_filename = re.sub(r'<[^>]+>', '', filename).strip()
+                    
+                    # Ensure full URL
                     if not url.startswith('http'):
-                        # If standard relative path
                         if url.startswith('/'):
                             url = f"https://logoscu.com{url}"
                         else:
                             url = f"https://logoscu.com/forms/{url}"
                     
-                    # Generate filename from entry since we didn't capture it
-                    # Try to guess extension if possible, or just use bin/dat and let magic bytes decide later?
-                    # For now, generic name is safer than nothing.
-                    filename = f"form_{form_id}_entry_{entry_id}_file_{i+1}"
-                    links.append({'url': url, 'filename': filename})
-                    print(f"[MACHFORM] Found download URL (alt): {url[:80]}")
+                    # If filename is empty or too long (regex quirk), generate a generic one
+                    # but usually link text contains the actual filename with extension
+                    if not clean_filename or len(clean_filename) > 200:
+                        clean_filename = f"form_{form_id}_entry_{entry_id}_file_{len(links)+1}"
+                    
+                    links.append({'url': url, 'filename': clean_filename})
+                    print(f"[MACHFORM] Found download: {clean_filename[:40]}")
+            else:
+                print(f"[MACHFORM] No download links found in entry {entry_id}")
             
             return links
             
