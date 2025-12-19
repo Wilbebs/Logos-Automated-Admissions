@@ -138,7 +138,8 @@ def send_email_with_attachment(recipient, student_data, classification=None, doc
 
     # TESTING MODE: Override recipient
     original_recipient = recipient
-    testing_recipients = ['web@logos.edu', 'proyectos@logos.edu']
+    # NOTE: Resend's onboading domain only allows sending to the account owner (web@logos.edu)
+    testing_recipients = ['web@logos.edu']
     
     print(f"[EMAIL] Original recipient: {original_recipient}")
     print(f"[EMAIL] Overriding to testing recipients: {testing_recipients}")

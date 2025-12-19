@@ -39,29 +39,45 @@ class SalesforceClient:
             print(f"[SALESFORCE] ❌ Connection failed: {e}")
             self.sf = None
     
-    def find_or_create_lead(self, email, first_name, last_name):
-        """Find existing Lead by email or create new one"""
+    def find_or_create_lead(self, email, first_name, last_name, max_retries=3):
+        """Find existing Lead by email or create new one with retry logic for race conditions"""
         if not self.sf:
             return None
         
-        # Trim whitespace from email to prevent duplicates due to spaces
-        clean_email = email.strip() if email else email
-        print(f"[SALESFORCE] Searching for Lead with email: '{clean_email}' (original: '{email}')")
+        # Trim and lowercase email to prevent duplicates
+        clean_email = email.strip().lower() if email else email
         
+        for attempt in range(max_retries):
+            print(f"[SALESFORCE] Searching for Lead with email: '{clean_email}' (attempt {attempt + 1}/{max_retries})")
+            
+            try:
+                # Search for existing Lead - ORDER BY CreatedDate DESC ensures we get the latest if duplicates exist
+                query = f"SELECT Id, Email, FirstName, LastName FROM Lead WHERE Email = '{clean_email}' ORDER BY CreatedDate DESC LIMIT 1"
+                
+                results = self.sf.query(query)
+                print(f"[SALESFORCE] Query returned {results['totalSize']} records")
+                
+                if results['totalSize'] > 0:
+                    lead_id = results['records'][0]['Id']
+                    print(f"[SALESFORCE] Found existing Lead: {lead_id}")
+                    return lead_id
+                
+                # If no lead found and not last attempt, wait briefly for Salesforce to commit concurrent creations
+                if attempt < max_retries - 1:
+                    print(f"[SALESFORCE] No lead found, waiting 2s before retry...")
+                    import time
+                    time.sleep(2)
+                    
+            except Exception as e:
+                print(f"[SALESFORCE] Error querying Lead: {e}")
+                if attempt < max_retries - 1:
+                    import time
+                    time.sleep(2)
+                else:
+                    return None
+        
+        print(f"[SALESFORCE] No existing Lead found after {max_retries} attempts, creating new one")
         try:
-            # Search for existing Lead - ORDER BY CreatedDate DESC ensures we get the latest if duplicates exist
-            query = f"SELECT Id, Email, FirstName, LastName FROM Lead WHERE Email = '{clean_email}' ORDER BY CreatedDate DESC LIMIT 1"
-            print(f"[SALESFORCE] Query: {query}")
-            
-            results = self.sf.query(query)
-            print(f"[SALESFORCE] Query returned {results['totalSize']} records")
-            
-            if results['totalSize'] > 0:
-                lead_id = results['records'][0]['Id']
-                print(f"[SALESFORCE] Found existing Lead: {lead_id}")
-                return lead_id
-            
-            print(f"[SALESFORCE] No existing Lead found, creating new one")
             # Create new Lead
             lead_data = {
                 'FirstName': first_name,
@@ -77,7 +93,7 @@ class SalesforceClient:
             return lead_id
             
         except Exception as e:
-            print(f"[SALESFORCE] Error with Lead operation: {e}")
+            print(f"[SALESFORCE] Error creating Lead: {e}")
             return None
     
     def create_form_submission(self, lead_id, form_type, form_data_json):
