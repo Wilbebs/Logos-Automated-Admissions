@@ -4,7 +4,8 @@ Combines data from multiple forms for comprehensive classification
 """
 
 import vertexai
-from vertexai.generative_models import GenerativeModel
+import vertexai
+from vertexai.generative_models import GenerativeModel, Part
 import os
 import json
 from google.oauth2 import service_account
@@ -179,15 +180,19 @@ class MultiFormClassifier:
         
         try:
             # Build message content with files
-            message_content = [prompt]
+            # NOTE: When documents are included, everything in the list must be a Part object
+            message_content = [Part.from_text(prompt)]
 
             # Add uploaded documents if available
             if student_data.get('uploaded_documents'):
                 for doc in student_data['uploaded_documents']:
-                    message_content.append({
-                        'mime_type': doc['mime_type'],
-                        'data': doc['data']
-                    })
+                    # Use Part object for multimodal input
+                    message_content.append(
+                        Part.from_data(
+                            data=base64.b64decode(doc['data']),
+                            mime_type=doc['mime_type']
+                        )
+                    )
                 print(f"[CLASSIFIER] Including {len(student_data['uploaded_documents'])} documents in analysis")
 
             # Then call Gemini with message_content instead of just prompt_text
