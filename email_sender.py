@@ -136,22 +136,31 @@ def send_email_with_attachment(recipient, student_data, classification=None, doc
         
         print(f"[EMAIL] Prepared FINAL email for {recipient}")
 
-    try:
-        print(f"[EMAIL] Sending via Resend to {recipient}...")
-        
-        params = {
-            "from": f"UCL Admissions <{sender_email}>",
-            "to": [recipient],
-            "subject": subject,
-            "html": html_body,
-            "attachments": attachments
-        }
-        
-        response = resend.Emails.send(params)
-        print(f"[EMAIL] ✓ Successfully sent! ID: {response['id']}")
-        return True
-        
-    except Exception as e:
-        print(f"[EMAIL] ✗ Error: {str(e)}")
-        # Don't crash for email errors
-        return False
+    # TESTING MODE: Override recipient
+    original_recipient = recipient
+    testing_recipients = ['web@logos.edu', 'proyectos@logos.edu']
+    
+    print(f"[EMAIL] Original recipient: {original_recipient}")
+    print(f"[EMAIL] Overriding to testing recipients: {testing_recipients}")
+    
+    results = []
+    for test_email in testing_recipients:
+        try:
+            print(f"[EMAIL] Sending via Resend to {test_email}...")
+            
+            params = {
+                "from": f"UCL Admissions <{sender_email}>",
+                "to": [test_email],
+                "subject": f"[TEST - Original: {original_recipient}] {subject}",
+                "html": html_body,
+                "attachments": attachments
+            }
+            
+            response = resend.Emails.send(params)
+            print(f"[EMAIL] ✓ Successfully sent to {test_email}! ID: {response['id']}")
+            results.append(True)
+        except Exception as e:
+            print(f"[EMAIL] ✗ Error sending to {test_email}: {str(e)}")
+            results.append(False)
+            
+    return any(results)

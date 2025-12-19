@@ -44,32 +44,40 @@ class SalesforceClient:
         if not self.sf:
             return None
         
+        # Trim whitespace from email to prevent duplicates due to spaces
+        clean_email = email.strip() if email else email
+        print(f"[SALESFORCE] Searching for Lead with email: '{clean_email}' (original: '{email}')")
+        
         try:
-            # Search for existing Lead
-            query = f"SELECT Id, Email, FirstName, LastName FROM Lead WHERE Email = '{email}' LIMIT 1"
+            # Search for existing Lead - ORDER BY CreatedDate DESC ensures we get the latest if duplicates exist
+            query = f"SELECT Id, Email, FirstName, LastName FROM Lead WHERE Email = '{clean_email}' ORDER BY CreatedDate DESC LIMIT 1"
+            print(f"[SALESFORCE] Query: {query}")
+            
             results = self.sf.query(query)
+            print(f"[SALESFORCE] Query returned {results['totalSize']} records")
             
             if results['totalSize'] > 0:
                 lead_id = results['records'][0]['Id']
                 print(f"[SALESFORCE] Found existing Lead: {lead_id}")
                 return lead_id
             
+            print(f"[SALESFORCE] No existing Lead found, creating new one")
             # Create new Lead
             lead_data = {
                 'FirstName': first_name,
                 'LastName': last_name,
-                'Email': email,
+                'Email': clean_email,
                 'Company': 'UCL Applicant',
                 'Status': 'Open - Not Contacted'
             }
             
             result = self.sf.Lead.create(lead_data)
             lead_id = result['id']
-            print(f"[SALESFORCE] Created new Lead: {lead_id}")
+            print(f"[SALESFORCE] Successfully created new Lead: {lead_id}")
             return lead_id
             
         except Exception as e:
-            print(f"[SALESFORCE] Error with Lead: {e}")
+            print(f"[SALESFORCE] Error with Lead operation: {e}")
             return None
     
     def create_form_submission(self, lead_id, form_type, form_data_json):
