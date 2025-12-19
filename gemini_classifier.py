@@ -17,8 +17,22 @@ from pathlib import Path
 def process_file_for_gemini(file_path):
     """Convert file to format Gemini can process"""
     try:
-        # Detect file type
         ext = Path(file_path).suffix.lower()
+        # Gemini-supported MIME types only
+        mime_types = {
+            '.pdf': 'application/pdf',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.webp': 'image/webp'
+        }
+        
+        mime_type = mime_types.get(ext)
+        
+        if not mime_type:
+            print(f"[CLASSIFIER] Skipping unsupported file type for Gemini: {os.path.basename(file_path)}")
+            return None
         
         # Read file
         with open(file_path, 'rb') as f:
@@ -26,19 +40,6 @@ def process_file_for_gemini(file_path):
         
         # Convert to base64
         file_b64 = base64.b64encode(file_data).decode('utf-8')
-        
-        # Map extensions to MIME types
-        mime_types = {
-            '.pdf': 'application/pdf',
-            '.jpg': 'image/jpeg',
-            '.jpeg': 'image/jpeg',
-            '.png': 'image/png',
-            '.gif': 'image/gif',
-            '.doc': 'application/msword',
-            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        }
-        
-        mime_type = mime_types.get(ext, 'application/octet-stream')
         
         return {
             'mime_type': mime_type,
