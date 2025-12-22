@@ -410,11 +410,11 @@ When documents are MISSING:
 
 When applicant selects level too high for credentials:
 CORRECT APPROACH ✅:
-"Your {ministry_experience} is impressive and demonstrates strong ministry calling. To reach {desired_level}, we recommend this pathway:
-STEP 1: Complete {appropriate_level} ({duration})
+"Your ministry experience is impressive and demonstrates strong ministry calling. To reach your desired level, we recommend this pathway:
+STEP 1: Complete the appropriate preparatory level (duration varies)
 STEP 2: Continue building ministry experience
-STEP 3: Advance to {desired_level}
-Many of our successful {desired_level} students followed this path and are now thriving in advanced ministry roles."
+STEP 3: Advance to your target level
+Many of our successful students followed this path and are now thriving in advanced ministry roles."
 
 ## Required Output Format
 
